@@ -1,0 +1,34 @@
+name: CiteGuard
+
+# Drop this file under .github/workflows/citeguard.yml in your repository.
+# It runs CiteGuard on every PR that touches `.pdf`, `.tex`, or `.md` files,
+# posts a sticky red/green comment, and fails the check if any fabricated
+# citation is detected. Adjust `fail-on` / `max-misses` to match your policy.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**/*.pdf"
+      - "**/*.tex"
+      - "**/*.md"
+
+permissions:
+  contents: read
+  pull-requests: write   # required for the sticky comment + inline annotations
+
+jobs:
+  citeguard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # so gh pr diff can see the full history
+
+      - name: Verify citations
+        uses: SuperMarioYL/citeguard@v0.2.0
+        with:
+          fail-on: miss       # journals: keep `miss`; OSS: switch to `none` while you tune
+          max-misses: 0       # 0 means any unresolvable citation fails the check
+          paths: "**/*.pdf,**/*.tex,**/*.md"
+          comment: "true"

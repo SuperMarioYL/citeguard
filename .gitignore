@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type-checker / linter caches
+.mypy_cache/
+.ruff_cache/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local cache produced by citeguard at runtime
+.citeguard_cache.db
+~/.cache/citeguard/
+
+# Local-only Claude scratch (never commit)
+.claude/
+CLAUDE.md
+
+# Local-only build-pipeline metadata (never commit)
+.build_metadata*.yaml
+.builder_prompt*.md
+.spawn.*.log
+*.citeguard.json

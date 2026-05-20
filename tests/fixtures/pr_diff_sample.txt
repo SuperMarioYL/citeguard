@@ -1,0 +1,11 @@
+# Sample changed-file list as produced by the composite action's
+# "gh pr diff --name-only" step.  Blank lines and ``#`` comments are stripped
+# by load_changed_files so this fixture stays hand-editable.
+
+docs/architecture.md
+paper.tex
+tests/fixtures/clean_paper.tex
+README.md
+# A non-text file the default glob should drop:
+assets/logo.png
+src/citeguard/cli.py
