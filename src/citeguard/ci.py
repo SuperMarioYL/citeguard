@@ -20,11 +20,10 @@ and lets the Action be deployed as a thin wrapper.
 from __future__ import annotations
 
 import fnmatch
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from citeguard.models import VerifyResult
-
 
 FailOn = str  # one of: "none" | "miss" | "degraded"
 
@@ -117,11 +116,7 @@ def _escape_annotation(text: str) -> str:
 
     See https://docs.github.com/actions/reference/workflow-commands-for-github-actions
     """
-    return (
-        text.replace("%", "%25")
-        .replace("\r", "%0D")
-        .replace("\n", "%0A")
-    )
+    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
 def render_annotations(results: Iterable[VerifyResult]) -> list[str]:
@@ -148,7 +143,9 @@ def render_annotations(results: Iterable[VerifyResult]) -> list[str]:
 
 def _annotation_message(r: VerifyResult) -> str:
     label = "fabricated citation" if r.status == "miss" else "registry degraded"
-    base = f"CiteGuard: {label} — {r.citation.kind} {r.citation.identifier} (registry: {r.registry})"
+    base = (
+        f"CiteGuard: {label} — {r.citation.kind} {r.citation.identifier} (registry: {r.registry})"
+    )
     if r.status == "miss" and r.nearest_matches:
         nm = r.nearest_matches[0]
         base += f" · nearest match: {nm.identifier} (d={nm.distance})"
@@ -166,9 +163,7 @@ def render_job_summary(
     """Build the Markdown that goes into ``$GITHUB_STEP_SUMMARY``."""
     results = list(results)
     hit, miss, degraded = count_outcomes(results)
-    verdict = (
-        "[**FAIL**]" if failed else "[**PASS**]"
-    )
+    verdict = "[**FAIL**]" if failed else "[**PASS**]"
     lines: list[str] = [
         "## CiteGuard report",
         "",

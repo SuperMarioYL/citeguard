@@ -37,9 +37,7 @@ async def verify(client: httpx.AsyncClient, citation: Citation) -> VerifyResult:
     try:
         r = await _get(client, url)
     except Exception as exc:  # noqa: BLE001 — network problems are degraded, not miss
-        return VerifyResult(
-            citation=citation, status="degraded", registry=_REGISTRY, note=str(exc)
-        )
+        return VerifyResult(citation=citation, status="degraded", registry=_REGISTRY, note=str(exc))
 
     if r.status_code == 200:
         data = r.json()
@@ -77,7 +75,9 @@ async def _nearest(client: httpx.AsyncClient, doi: str) -> list[NearestMatch]:
     a "did you mean…" hint.
     """
     suffix = doi.split("/", 1)[-1]
-    seed = " ".join(part for part in suffix.replace("-", " ").replace("_", " ").split() if part.isalpha())
+    seed = " ".join(
+        part for part in suffix.replace("-", " ").replace("_", " ").split() if part.isalpha()
+    )
     if not seed:
         return []
     try:

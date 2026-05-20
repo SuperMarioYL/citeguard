@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
 from citeguard.models import VerifyResult
-
 
 _STATUS_GLYPH = {"hit": "✓", "miss": "✗", "degraded": "?"}
 _STATUS_STYLE = {"hit": "bold green", "miss": "bold red", "degraded": "bold yellow"}
@@ -72,7 +71,12 @@ def to_json(results: Iterable[VerifyResult]) -> str:
 
 def to_markdown(results: Iterable[VerifyResult]) -> str:
     """Markdown report suitable for pasting into a PR or issue."""
-    lines: list[str] = ["# CiteGuard report", "", "| Status | Kind | Identifier | Registry | Evidence / nearest match |", "| :---: | :--- | :--- | :--- | :--- |"]
+    lines: list[str] = [
+        "# CiteGuard report",
+        "",
+        "| Status | Kind | Identifier | Registry | Evidence / nearest match |",
+        "| :---: | :--- | :--- | :--- | :--- |",
+    ]
     results = list(results)
     for r in results:
         glyph = {"hit": "✓", "miss": "✗", "degraded": "?"}[r.status]

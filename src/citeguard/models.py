@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +31,7 @@ class Citation(BaseModel):
     raw_text: str
     kind: CitationKind
     identifier: str
-    context_span: Optional[ContextSpan] = None
+    context_span: ContextSpan | None = None
 
     def __hash__(self) -> int:
         return hash((self.kind, self.identifier))
@@ -56,6 +56,6 @@ class VerifyResult(BaseModel):
     citation: Citation
     status: VerifyStatus
     registry: str
-    evidence_url: Optional[str] = None
+    evidence_url: str | None = None
     nearest_matches: list[NearestMatch] = Field(default_factory=list)
-    note: Optional[str] = None
+    note: str | None = None

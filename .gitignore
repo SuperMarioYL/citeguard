@@ -60,3 +60,6 @@ CLAUDE.md
 .builder_prompt*.md
 .spawn.*.log
 *.citeguard.json
+
+# Generated test fixture (materialised by tests/conftest.py)
+tests/fixtures/sample_paper.pdf

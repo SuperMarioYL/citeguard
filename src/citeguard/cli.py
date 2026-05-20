@@ -17,8 +17,8 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import click
 import httpx
@@ -31,11 +31,12 @@ from citeguard.models import Citation, VerifyResult
 from citeguard.report import render_terminal, write_json, write_markdown
 from citeguard.resolvers import RegistryCache
 from citeguard.resolvers import arxiv as arxiv_resolver
-from citeguard.resolvers import crossref as crossref_resolver  # noqa: F401 — kept on the import surface
+from citeguard.resolvers import (
+    crossref as crossref_resolver,  # noqa: F401 — kept on the import surface
+)
 from citeguard.resolvers import github as github_resolver
 from citeguard.resolvers import nvd as nvd_resolver
 from citeguard.resolvers import openalex as openalex_resolver
-
 
 _CONSOLE = Console()
 _DEFAULT_CI_GLOB = "**/*.pdf,**/*.tex,**/*.md"
@@ -84,6 +85,7 @@ async def _verify_batch(
     sem = asyncio.Semaphore(concurrency)
 
     async with httpx.AsyncClient(http2=False, follow_redirects=True) as client:
+
         async def _bounded(c: Citation) -> VerifyResult:
             async with sem:
                 return await _verify_one(client, cache, c)
@@ -92,11 +94,27 @@ async def _verify_batch(
 
 
 @click.group(invoke_without_command=True)
-@click.argument("path", required=False, type=click.Path(exists=False, dir_okay=False, path_type=Path))
-@click.option("--json", "json_out", type=click.Path(dir_okay=False, path_type=Path), help="write the JSON sidecar to this path")
-@click.option("--md", "md_out", type=click.Path(dir_okay=False, path_type=Path), help="write a Markdown report to this path")
+@click.argument(
+    "path", required=False, type=click.Path(exists=False, dir_okay=False, path_type=Path)
+)
+@click.option(
+    "--json",
+    "json_out",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="write the JSON sidecar to this path",
+)
+@click.option(
+    "--md",
+    "md_out",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="write a Markdown report to this path",
+)
 @click.option("--no-cache", is_flag=True, help="skip the SQLite cache (force live registry calls)")
-@click.option("--strict", is_flag=True, help="exit code 1 if any miss is found (CI-friendly; superseded by --fail-on in v0.2)")
+@click.option(
+    "--strict",
+    is_flag=True,
+    help="exit code 1 if any miss is found (CI-friendly; superseded by --fail-on in v0.2)",
+)
 @click.option(
     "--changed-only",
     "changed_only",
@@ -192,11 +210,7 @@ def main(
 def cmd_extract(path: Path) -> None:
     """Print every citation found in PATH as JSON (no network)."""
     citations = extract_from_path(path)
-    click.echo(
-        "[\n  "
-        + ",\n  ".join(c.model_dump_json() for c in citations)
-        + "\n]"
-    )
+    click.echo("[\n  " + ",\n  ".join(c.model_dump_json() for c in citations) + "\n]")
 
 
 @main.command("verify")
@@ -292,7 +306,9 @@ def _run_ci(
         for line in ci_mod.render_annotations(all_results):
             click.echo(line)
         for rel in skipped_missing:
-            click.echo(f"::warning::CiteGuard: changed file {rel} not present in workspace; skipped")
+            click.echo(
+                f"::warning::CiteGuard: changed file {rel} not present in workspace; skipped"
+            )
 
     if summary_out is not None:
         summary_md = ci_mod.render_job_summary(
@@ -309,7 +325,9 @@ def _run_ci(
     if gh_output:
         hit, miss, degraded = ci_mod.count_outcomes(all_results)
         with open(gh_output, "a", encoding="utf-8") as fh:
-            fh.write(f"hit={hit}\nmiss={miss}\ndegraded={degraded}\nfailed={'true' if failed else 'false'}\n")
+            fh.write(
+                f"hit={hit}\nmiss={miss}\ndegraded={degraded}\nfailed={'true' if failed else 'false'}\n"
+            )
 
     return ci_mod.EXIT_THRESHOLD if failed else ci_mod.EXIT_PASS
 

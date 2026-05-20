@@ -23,7 +23,6 @@ from citeguard.resolvers import github as github_resolver
 from citeguard.resolvers import nvd as nvd_resolver
 from citeguard.resolvers import openalex as openalex_resolver
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
@@ -96,8 +95,16 @@ async def test_openalex_miss_returns_nearest_matches():
             200,
             json={
                 "results": [
-                    {"title": "Roughly Similar Paper", "doi": "https://doi.org/10.1/similar", "id": "x"},
-                    {"title": "Another Candidate", "doi": "https://doi.org/10.1/another", "id": "y"},
+                    {
+                        "title": "Roughly Similar Paper",
+                        "doi": "https://doi.org/10.1/similar",
+                        "id": "x",
+                    },
+                    {
+                        "title": "Another Candidate",
+                        "doi": "https://doi.org/10.1/another",
+                        "id": "y",
+                    },
                 ]
             },
         )
@@ -226,15 +233,19 @@ def test_cache_does_not_persist_degraded(tmp_path):
 
 def test_to_json_round_trips_results():
     citation = Citation(raw_text="x", kind="doi", identifier="10.1/x")
-    payload = to_json([
-        VerifyResult(citation=citation, status="hit", registry="openalex", evidence_url="u"),
-        VerifyResult(
-            citation=Citation(raw_text="y", kind="cve", identifier="CVE-2024-1"),
-            status="miss",
-            registry="nvd",
-            nearest_matches=[NearestMatch(title="adjacent", identifier="CVE-2024-2", distance=1)],
-        ),
-    ])
+    payload = to_json(
+        [
+            VerifyResult(citation=citation, status="hit", registry="openalex", evidence_url="u"),
+            VerifyResult(
+                citation=Citation(raw_text="y", kind="cve", identifier="CVE-2024-1"),
+                status="miss",
+                registry="nvd",
+                nearest_matches=[
+                    NearestMatch(title="adjacent", identifier="CVE-2024-2", distance=1)
+                ],
+            ),
+        ]
+    )
     parsed = json.loads(payload)
     assert parsed["generator"].startswith("citeguard/")
     assert len(parsed["results"]) == 2
@@ -243,9 +254,11 @@ def test_to_json_round_trips_results():
 
 def test_to_markdown_includes_status_glyphs():
     citation = Citation(raw_text="x", kind="doi", identifier="10.1/x")
-    md = to_markdown([
-        VerifyResult(citation=citation, status="hit", registry="openalex", evidence_url="u"),
-    ])
+    md = to_markdown(
+        [
+            VerifyResult(citation=citation, status="hit", registry="openalex", evidence_url="u"),
+        ]
+    )
     assert "✓" in md
     assert "openalex" in md
     assert "1 hit · 0 miss · 0 degraded" in md

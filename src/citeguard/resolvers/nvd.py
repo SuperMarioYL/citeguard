@@ -40,9 +40,7 @@ async def verify(client: httpx.AsyncClient, citation: Citation) -> VerifyResult:
     try:
         r = await _get(client, _BASE, {"cveId": cve})
     except Exception as exc:  # noqa: BLE001
-        return VerifyResult(
-            citation=citation, status="degraded", registry=_REGISTRY, note=str(exc)
-        )
+        return VerifyResult(citation=citation, status="degraded", registry=_REGISTRY, note=str(exc))
 
     if r.status_code == 404:
         return VerifyResult(
@@ -94,6 +92,8 @@ def _year_neighbours(cve: str) -> list[NearestMatch]:
             continue
         identifier = f"CVE-{year}-{n:04d}"
         candidates.append(
-            NearestMatch(title=f"adjacent CVE for {year}", identifier=identifier, distance=abs(delta))
+            NearestMatch(
+                title=f"adjacent CVE for {year}", identifier=identifier, distance=abs(delta)
+            )
         )
     return candidates

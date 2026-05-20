@@ -19,7 +19,6 @@ from citeguard import ci as ci_mod
 from citeguard.cli import main as cli_main
 from citeguard.models import Citation, ContextSpan, NearestMatch, VerifyResult
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 

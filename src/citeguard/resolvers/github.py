@@ -66,9 +66,7 @@ async def verify(client: httpx.AsyncClient, citation: Citation) -> VerifyResult:
     )
 
 
-async def _verify_commit(
-    client: httpx.AsyncClient, citation: Citation, sha: str
-) -> VerifyResult:
+async def _verify_commit(client: httpx.AsyncClient, citation: Citation, sha: str) -> VerifyResult:
     # A bare 40-hex string cannot be resolved without a repo, and the
     # extractor only keeps SHAs that appear near a github.com/<owner>/<repo>
     # URL or the words "commit"/"sha".  The url-form case carries enough
@@ -108,9 +106,7 @@ async def _verify_commit(
     )
 
 
-async def _verify_issue(
-    client: httpx.AsyncClient, citation: Citation, ident: str
-) -> VerifyResult:
+async def _verify_issue(client: httpx.AsyncClient, citation: Citation, ident: str) -> VerifyResult:
     # ident format: "owner/repo#123"
     repo, _, num = ident.rpartition("#")
     owner, _, repo_name = repo.partition("/")
@@ -125,9 +121,7 @@ async def _verify_issue(
     try:
         r = await _get(client, url)
     except Exception as exc:  # noqa: BLE001
-        return VerifyResult(
-            citation=citation, status="degraded", registry=_REGISTRY, note=str(exc)
-        )
+        return VerifyResult(citation=citation, status="degraded", registry=_REGISTRY, note=str(exc))
     if r.status_code == 200:
         return VerifyResult(
             citation=citation,

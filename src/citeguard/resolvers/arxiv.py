@@ -39,9 +39,7 @@ async def verify(client: httpx.AsyncClient, citation: Citation) -> VerifyResult:
     try:
         r = await _get(client, url)
     except Exception as exc:  # noqa: BLE001
-        return VerifyResult(
-            citation=citation, status="degraded", registry=_REGISTRY, note=str(exc)
-        )
+        return VerifyResult(citation=citation, status="degraded", registry=_REGISTRY, note=str(exc))
 
     if r.status_code != 200:
         return VerifyResult(

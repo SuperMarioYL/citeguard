@@ -8,11 +8,10 @@ scrape for `.bib` and `\\bibitem` blocks.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from citeguard.models import Citation, ContextSpan
-
 
 # Order matters for nothing in particular, but DOI must be matched before
 # bare 10.xxx tokens get swallowed by some other pattern.  We anchor each one
@@ -40,9 +39,7 @@ _ARXIV_NEW_URL_RE = re.compile(
     r"https?://arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})(v\d+)?",
     re.IGNORECASE,
 )
-_ARXIV_OLD_RE = re.compile(
-    r"\barXiv:?\s*([a-z\-]+(?:\.[A-Z]{2})?/\d{7})\b", re.IGNORECASE
-)
+_ARXIV_OLD_RE = re.compile(r"\barXiv:?\s*([a-z\-]+(?:\.[A-Z]{2})?/\d{7})\b", re.IGNORECASE)
 
 _CVE_RE = re.compile(r"\b(CVE-\d{4}-\d{4,7})\b")
 

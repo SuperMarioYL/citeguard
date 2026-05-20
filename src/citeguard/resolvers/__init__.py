@@ -10,15 +10,13 @@ the right resolver based on its `kind`.
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 from citeguard.models import VerifyResult
-
 
 _DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60  # 7 days — plan §4
 _SCHEMA = """
