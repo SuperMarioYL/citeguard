@@ -4,6 +4,51 @@ All notable changes to CiteGuard will be documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); semver per
 [SemVer 2.0](https://semver.org/).
 
+## [0.3.0] — 2026-05-23
+
+Pre-release smoke gate.  No new user-visible feature; the surface area is
+purely developer ergonomics — same milestone (`m6_preflight_lint`) drove
+every change.  Triggered by the v0.2.0 release-day pattern (three commits
+in five minutes on day zero — initial release + ruff hotfix across 15
+files + Action-version bump), all of which a local gate would have caught.
+
+### Added — m6_preflight_lint
+- `Makefile` with `help`, `install-dev`, `lint`, `lint-fix`, and `test`
+  targets.  `make lint` runs `ruff check .` + `ruff format --check .` and
+  is the canonical pre-release gate.
+- `.pre-commit-config.yaml` wiring `astral-sh/ruff-pre-commit@v0.7.4` to
+  the `pre-push` stage so the same lint that gates a release also fires
+  before a `git push` ever reaches CI.  `pre-commit` itself is now a dev
+  dependency (`pre-commit>=3.7`).
+- New CI job `pin-actions-versions` (`.github/workflows/ci.yml`) that
+  `git grep`s the repo for `actions/checkout@v[1-4]` or
+  `actions/setup-python@v[1-5]` and fails the build if any are found —
+  pinning every workflow to the post-2026-06 Node.js-24 majors
+  (`checkout@v5` / `setup-python@v6`).  `.example`-suffixed fixtures are
+  excluded from the scan so the in-tree documentation fixture
+  (`.github/workflows/_fixture_stale_action.yml.example`) does not trip
+  the guard.
+
+### Changed
+- `action.yml` and `examples/citeguard-action.yml` bumped from
+  `setup-python@v5` / `checkout@v4` to `setup-python@v6` / `checkout@v5`
+  to satisfy the new grep guard.
+- README.md and README.en.md gained a small note in the existing
+  `开发` / `Development` section pointing first-time contributors at
+  `make lint` and `pre-commit install --hook-type pre-push`.
+- `BUILD_SETUP_NEXT_STEPS.md` updated with the v0.3 first-time-contributor
+  setup (`pip install -e .[dev]` + `pre-commit install --hook-type
+  pre-push`).
+- `pyproject.toml` dev extras gain `pre-commit>=3.7`.  No runtime
+  dependency change.
+
+### Not changed (still out of scope per `mvp_plan.md` §6)
+- GitLab CI integration / CI component (still deferred — no external usage
+  signal yet).
+- SARIF output / GitHub code-scanning Security-tab integration.
+- Windows pipx binary.
+- `--strict` LLM-based extraction recall booster.
+
 ## [0.2.0] — 2026-05-20
 
 Headline feature: **CiteGuard runs in CI**. A composite GitHub Action wraps

@@ -1,0 +1,20 @@
+# Pre-push gate (NOT pre-commit) — runs the same ruff checks `make lint` does,
+# so a bad push never reaches CI. We deliberately attach to `pre-push` instead
+# of `pre-commit` so editor saves and quick WIP commits stay fast; the gate
+# fires exactly once, at `git push`.
+#
+# First-time setup:
+#   pip install -e ".[dev]"
+#   pre-commit install --hook-type pre-push
+
+default_stages: [pre-push]
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+        stages: [pre-push]
+      - id: ruff-format
+        stages: [pre-push]

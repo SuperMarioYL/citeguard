@@ -142,6 +142,29 @@ its own PR.
   default; deterministic regex remains the trust anchor).
 - Windows binary packaging.
 
+## 7.5 v0.3.0 — first-time contributor setup
+
+`v0.3` adds a pre-release smoke gate (`m6_preflight_lint`).  Two minutes of
+one-off setup for every new clone:
+
+```bash
+pip install -e ".[dev]"                    # picks up pre-commit>=3.7
+pre-commit install --hook-type pre-push    # ruff runs once at git-push time
+make help                                  # see all dev targets
+make lint                                  # what CI + pre-push will run
+```
+
+Why pre-push and not pre-commit: editor saves and quick WIP commits stay
+fast, but the gate fires exactly once at `git push` so a stale lint cannot
+slip into a PR and force a same-day hotfix commit on `main` (the failure
+mode that motivated this milestone — see CHANGELOG `[0.3.0]`).
+
+The CI job `pin-actions-versions` enforces the same rule for GitHub Action
+pins: any `actions/checkout@v[1-4]` or `actions/setup-python@v[1-5]` in a
+real workflow fails the build.  The in-tree fixture
+`.github/workflows/_fixture_stale_action.yml.example` documents what stale
+pins look like and is exempted via a `:!*.example` git-grep pathspec.
+
 ## 8. Build-time caveats
 
 - The PDF fixture (`tests/fixtures/sample_paper.pdf`) is generated at test

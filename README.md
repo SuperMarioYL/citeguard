@@ -197,7 +197,7 @@ jobs:
   citeguard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: SuperMarioYL/citeguard@v0.2.0
@@ -253,8 +253,15 @@ cd citeguard
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q                 # 首次运行会生成 tests/fixtures/sample_paper.pdf
-ruff check src tests
+make lint                 # ruff check + ruff format --check（v0.3 起为发布闸门）
+pre-commit install --hook-type pre-push   # 把同套 lint 接到 git push 前
 ```
+
+`make help` 列出全部任务（`install-dev` / `lint` / `lint-fix` / `test`）。
+`.pre-commit-config.yaml` 把 ruff 挂在 `pre-push` 阶段——`git commit` 速度不变，
+但 `git push` 之前会跑一遍 lint，避免 CI 当兜底。CI 同时跑一个 grep 闸门，把
+所有 GitHub Actions 钉到 Node.js-24 majors（`checkout@v5` / `setup-python@v6`），
+任何回退到 stale 版本的 PR 都会被红掉。
 
 欢迎在 [Issues](https://github.com/SuperMarioYL/citeguard/issues) 区贴：
 

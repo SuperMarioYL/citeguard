@@ -200,7 +200,7 @@ jobs:
   citeguard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: SuperMarioYL/citeguard@v0.2.0
@@ -262,8 +262,16 @@ cd citeguard
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q                 # first run materialises tests/fixtures/sample_paper.pdf
-ruff check src tests
+make lint                 # ruff check + ruff format --check (release gate as of v0.3)
+pre-commit install --hook-type pre-push   # wire the same lint into `git push`
 ```
+
+`make help` lists every target (`install-dev` / `lint` / `lint-fix` / `test`).
+The `.pre-commit-config.yaml` attaches ruff to the `pre-push` stage — local
+commits stay fast, but `git push` runs the same checks CI does so CI is never
+the first place a lint failure shows up. CI also runs a grep guard that pins
+every GitHub Action to the Node.js-24 majors (`checkout@v5` /
+`setup-python@v6`); any PR that regresses to a stale pin fails the build.
 
 Issues welcome — especially:
 
