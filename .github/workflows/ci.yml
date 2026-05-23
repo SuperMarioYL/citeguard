@@ -36,3 +36,30 @@ jobs:
       - name: Test
         run: |
           pytest -q
+
+  pin-actions-versions:
+    # Grep guard (v0.3 m6_preflight_lint): fails the build if any committed
+    # workflow still pins actions/checkout to a pre-Node.js-24 major (v1..v4)
+    # or actions/setup-python to a pre-Node.js-24 major (v1..v5).
+    # `.example` files are excluded so we can keep a documented stale fixture
+    # in-tree without tripping the guard.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Grep for stale Action major versions
+        run: |
+          set -euo pipefail
+          PATTERN='actions/(checkout@v[1-4]|setup-python@v[1-5])([^0-9]|$)'
+          # `:!*.example` excludes documentation fixtures from the scan.
+          if git grep -nE "$PATTERN" -- \
+               ':!*.example' \
+               ':!.github/workflows/ci.yml' \
+               > /tmp/stale_actions.txt; then
+            echo "::error::Stale GitHub Action versions detected:"
+            cat /tmp/stale_actions.txt
+            echo
+            echo "Bump checkout to @v5 and setup-python to @v6 (Node.js-24 majors)."
+            exit 1
+          fi
+          echo "All Action pins are on Node.js-24 majors."

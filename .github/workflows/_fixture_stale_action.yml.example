@@ -1,0 +1,21 @@
+# Fixture (NOT consumed by Actions — note the `.example` suffix).
+#
+# This file documents what the v0.3 m6 grep guard is looking for.  If you ever
+# rename it to drop `.example`, the `pin-actions-versions` CI job will fail
+# the build on these stale Action majors:
+#
+#   - actions/checkout@v4         (Node.js-20, sunset 2026-06)
+#   - actions/setup-python@v5     (Node.js-20, sunset 2026-06)
+#
+# Recovery: bump to checkout@v5 + setup-python@v6 (Node.js-24 majors).
+
+name: stale-action-fixture
+on: [workflow_dispatch]
+jobs:
+  example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
