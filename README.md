@@ -58,6 +58,18 @@
 
 > 三者缺一，CiteGuard 在两年前都无法成立——这是它现在才出现的原因。
 
+## <img src="https://api.iconify.design/tabler:topology-star-3.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> 架构
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/atlas-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/atlas-light.svg">
+    <img src="./assets/atlas-light.svg" width="880" alt="架构：输入文档进入无 LLM 的抽取层，再扇出到五个 registry resolver（OpenAlex / Crossref / arXiv / NVD / GitHub），由 7 天 TTL 的 SQLite 缓存兜底，最后汇聚到报告层输出红绿表 + JSON 边车">
+  </picture>
+</p>
+
+一条确定性、无 LLM 的流水线：文档先经**抽取层**（`pypdf` + 5 类标识符正则）拆出 DOI / arXiv / CVE / commit SHA / `owner/repo#issue`，再由 **Resolver fan-out** 用 `asyncio.gather` 并发命中五个权威 registry（`httpx` 复用连接、`tenacity` 退避重试）。**SQLite 缓存**落在 `~/.cache/citeguard`、TTL 7 天，degraded 结果刻意不入缓存以免一次瞬态故障锁死一周。最终**报告层**用 `rich` 渲染红绿表，并同步落一份 schema 稳定的 JSON 边车供下游脚本消费。
+
 ## 安装
 
 ```bash
@@ -97,13 +109,13 @@ citeguard paper.pdf
 
 </details>
 
-## 演示
+## <img src="https://api.iconify.design/tabler:photo.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> 演示
 
-> 30 秒演示：撤稿 arXiv 论文 → 3 条红条精准命中编造引用 → 自动落 JSON 边车。
+> 撤稿 arXiv 论文 → 红条精准命中编造引用 → 干净论文全绿 → 自动落 JSON 边车。
 
-[![asciicast](https://asciinema.org/a/PLACEHOLDER.svg)](https://asciinema.org/a/PLACEHOLDER)
+![CiteGuard 演示](assets/demo.gif)
 
-> 📼 `assets/demo.tape` 是 [VHS](https://github.com/charmbracelet/vhs) 脚本，可一键重录。详见 [`assets/README.md`](./assets/README.md)。
+> 📼 `docs/demo.tape` 是 [VHS](https://github.com/charmbracelet/vhs) 脚本，CI 会自动重录 `assets/demo.gif`；本地可 `vhs docs/demo.tape` 一键重录。
 
 ## 工作原理
 

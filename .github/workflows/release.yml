@@ -11,12 +11,15 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: read
+  contents: write   # required to attach wheel + sdist to the GitHub Release
   id-token: write   # required for PyPI trusted publishing
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # softprops/action-gh-release uploads dist/* to the Release
+      id-token: write
     steps:
       - uses: actions/checkout@v5
 
@@ -49,6 +52,11 @@ jobs:
         with:
           name: dist
           path: dist/
+
+      - name: Attach wheel + sdist to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
 
   publish:
     needs: build

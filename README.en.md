@@ -58,6 +58,18 @@ Three unlocks aligned in the last 12 months — none of them existed in 2024:
 
 > Remove any one of the three and CiteGuard could not have existed two years ago — that's why it shows up now.
 
+## <img src="https://api.iconify.design/tabler:topology-star-3.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Architecture
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/atlas-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/atlas-light.svg">
+    <img src="./assets/atlas-light.svg" width="880" alt="Architecture: input documents enter a no-LLM extraction layer, then fan out across five registry resolvers (OpenAlex / Crossref / arXiv / NVD / GitHub) backed by a 7-day SQLite cache, and converge on a red/green report layer that emits a terminal table plus a JSON sidecar">
+  </picture>
+</p>
+
+A deterministic, LLM-free pipeline. Documents first pass through the **extraction layer** (`pypdf` + five identifier-class regexes) that pulls out DOIs, arXiv IDs, CVEs, commit SHAs, and `owner/repo#issue` references. The **resolver fan-out** then hits five authoritative registries concurrently via `asyncio.gather`, reusing a single `httpx` client with `tenacity` backoff. A 7-day-TTL **SQLite cache** under `~/.cache/citeguard` shields the registries — `degraded` outcomes are deliberately not cached so one transient failure never freezes a result for a week — before the **report layer** renders the `rich` red/green table and drops a stable-schema JSON sidecar for downstream tooling.
+
 ## Install
 
 ```bash
@@ -98,13 +110,13 @@ A `paper.pdf.citeguard.json` sidecar drops alongside the input, ready for downst
 
 </details>
 
-## Demo
+## <img src="https://api.iconify.design/tabler:photo.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Demo
 
-> 30 seconds: a withdrawn arXiv paper → 3 red rows pin the fabricated refs → JSON sidecar appears.
+> A withdrawn arXiv paper → red rows pin the fabricated refs → a clean paper goes all-green → the JSON sidecar appears.
 
-[![asciicast](https://asciinema.org/a/PLACEHOLDER.svg)](https://asciinema.org/a/PLACEHOLDER)
+![CiteGuard demo](assets/demo.gif)
 
-> 📼 `assets/demo.tape` is a [VHS](https://github.com/charmbracelet/vhs) script you can re-record in one command — see [`assets/README.md`](./assets/README.md).
+> 📼 `docs/demo.tape` is a [VHS](https://github.com/charmbracelet/vhs) script; CI re-records `assets/demo.gif` automatically, or run `vhs docs/demo.tape` locally.
 
 ## How it works
 
