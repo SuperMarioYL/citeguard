@@ -8,7 +8,7 @@
 PY ?= python
 RUFF ?= ruff
 
-.PHONY: help install-dev lint lint-fix test
+.PHONY: help install-dev lint lint-fix test check-version
 
 help: ## Show this help.
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -16,7 +16,10 @@ help: ## Show this help.
 install-dev: ## Install the package + dev extras in editable mode.
 	$(PY) -m pip install -e ".[dev]"
 
-lint: ## Run ruff check + ruff format --check (pre-release smoke gate).
+check-version: ## Assert pyproject version == CHANGELOG top entry (== git tag if tagged).
+	$(PY) scripts/check_version.py
+
+lint: check-version ## Run version check + ruff check + ruff format --check (pre-release smoke gate).
 	$(RUFF) check .
 	$(RUFF) format --check .
 

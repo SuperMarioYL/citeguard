@@ -55,8 +55,15 @@ _COMMIT_RE = re.compile(
 )
 
 # owner/repo#issue — accepts both the "shortcut" form and full URLs.
+#
+# The full `github.com/...` URL form is unconditional.  The bare
+# `owner/repo#N` shortcut, however, must be left-anchored: it may only fire at
+# the start of the string or immediately after whitespace.  Without that
+# anchor any `<word>/<word>#<digits>` substring matched — so a DOI fragment
+# like `10.1145/3460120#2` or prose like `results/table#3` was mis-extracted
+# as a gh_issue, sent to the GitHub API, and flagged as a fabricated citation.
 _GH_ISSUE_RE = re.compile(
-    r"""(?:https?://github\.com/)?
+    r"""(?:(?:https?://)?github\.com/|(?<=\s)|^)        # github URL, or left-anchor (BOS / after whitespace)
         ([A-Za-z0-9][A-Za-z0-9._-]{0,38})                 # owner
         /
         ([A-Za-z0-9][A-Za-z0-9._-]{0,99})                 # repo

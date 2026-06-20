@@ -1,0 +1,4 @@
+{"name": "doi_with_fragment", "doi": "10.1234/foo#section-2", "expected_encoded": "10.1234%2Ffoo%23section-2"}
+{"name": "doi_with_query", "doi": "10.5678/bar?ref=baz", "expected_encoded": "10.5678%2Fbar%3Fref%3Dbaz"}
+{"name": "doi_with_semicolon", "doi": "10.1145/abc;v2", "expected_encoded": "10.1145%2Fabc%3Bv2"}
+{"name": "plain_doi", "doi": "10.1145/3460120.3484797", "expected_encoded": "10.1145%2F3460120.3484797"}

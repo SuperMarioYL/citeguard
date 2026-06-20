@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -33,7 +35,10 @@ async def verify(client: httpx.AsyncClient, citation: Citation) -> VerifyResult:
     Miss → status=miss with up to three nearest title matches.
     """
     doi = citation.identifier
-    url = f"{_BASE}/works/doi:{doi}"
+    # Percent-encode the DOI: the extraction regex admits URL-reserved chars
+    # (`?`, `#`, `;`) which would otherwise truncate the path at the query /
+    # fragment boundary and yield a spurious 404.
+    url = f"{_BASE}/works/doi:{quote(doi, safe='')}"
     try:
         r = await _get(client, url)
     except Exception as exc:  # noqa: BLE001 — network problems are degraded, not miss

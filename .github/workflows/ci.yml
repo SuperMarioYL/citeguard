@@ -38,11 +38,14 @@ jobs:
           pytest -q
 
   pin-actions-versions:
-    # Grep guard (v0.3 m6_preflight_lint): fails the build if any committed
-    # workflow still pins actions/checkout to a pre-Node.js-24 major (v1..v4)
-    # or actions/setup-python to a pre-Node.js-24 major (v1..v5).
-    # `.example` files are excluded so we can keep a documented stale fixture
-    # in-tree without tripping the guard.
+    # Grep guard (v0.3 m6_preflight_lint; v0.4 extension): fails the build if
+    # ANY committed file — including every workflow under .github/workflows/
+    # (ci.yml, demo.yml, release.yml, …) — still pins actions/checkout to a
+    # pre-Node.js-24 major (v1..v4) or actions/setup-python to a pre-Node.js-24
+    # major (v1..v5).  `.example` files are excluded so we can keep a documented
+    # stale fixture in-tree without tripping the guard.  ci.yml is no longer
+    # exempt: the pattern only matches a literal `@vN` pin, not the regex string
+    # documented in this step, so the guard now covers its own workflow file.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -54,7 +57,6 @@ jobs:
           # `:!*.example` excludes documentation fixtures from the scan.
           if git grep -nE "$PATTERN" -- \
                ':!*.example' \
-               ':!.github/workflows/ci.yml' \
                > /tmp/stale_actions.txt; then
             echo "::error::Stale GitHub Action versions detected:"
             cat /tmp/stale_actions.txt

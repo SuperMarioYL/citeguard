@@ -13,6 +13,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from citeguard.cli import _verify_one
 from citeguard.extract import extract_citations, extract_from_path
 from citeguard.models import Citation, NearestMatch, VerifyResult
 from citeguard.report import to_json, to_markdown
@@ -24,6 +25,17 @@ from citeguard.resolvers import nvd as nvd_resolver
 from citeguard.resolvers import openalex as openalex_resolver
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def _load_jsonl(name: str) -> list[dict]:
+    """Load a `.jsonl` golden-case fixture (one JSON object per non-blank line)."""
+    path = FIXTURES / name
+    cases: list[dict] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            cases.append(json.loads(line))
+    return cases
 
 
 # ---------- m1: extraction -------------------------------------------------
@@ -76,7 +88,8 @@ def _mock_client(handler):
 @pytest.mark.asyncio
 async def test_openalex_hit_returns_evidence_url():
     def handler(request: httpx.Request) -> httpx.Response:
-        assert "/works/doi:10.1145/" in str(request.url)
+        # DOI path segment is percent-encoded as of v0.4.0 (fix-doi-not-url-encoded).
+        assert "/works/doi:10.1145%2Ffoo" in str(request.url)
         return httpx.Response(200, json={"id": "https://openalex.org/W1234567"})
 
     citation = Citation(raw_text="doi:10.1145/foo", kind="doi", identifier="10.1145/foo")
@@ -262,3 +275,109 @@ def test_to_markdown_includes_status_glyphs():
     assert "✓" in md
     assert "openalex" in md
     assert "1 hit · 0 miss · 0 degraded" in md
+
+
+# ---------- v0.4.0: fix-crossref-fallback-unwired --------------------------
+
+
+def _fallback_handler(openalex_status: int, crossref_status: int):
+    """Route OpenAlex vs Crossref requests to the per-registry status codes."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        if "openalex" in host:
+            if "/works/doi:" in str(request.url):
+                # `_nearest` reuses the same base for its title search; only the
+                # primary lookup carries the 404, the search just returns empty.
+                if request.url.params.get("search") is not None:
+                    return httpx.Response(200, json={"results": []})
+                return httpx.Response(openalex_status, json={"id": "https://openalex.org/W1"})
+            return httpx.Response(200, json={"results": []})
+        # Crossref host.
+        return httpx.Response(crossref_status, json={"message": {}})
+
+    return handler
+
+
+@pytest.mark.parametrize("case", _load_jsonl("crossref_fallback.jsonl"), ids=lambda c: c["name"])
+@pytest.mark.asyncio
+async def test_crossref_fallback_cases(case):
+    citation = Citation(raw_text=case["doi"], kind="doi", identifier=case["doi"])
+    handler = _fallback_handler(case["openalex_status"], case["crossref_status"])
+    async with _mock_client(handler) as client:
+        result = await _verify_one(client, None, citation)
+    assert result.status == case["expected_status"]
+    assert result.registry == case["expected_registry"]
+
+
+@pytest.mark.asyncio
+async def test_crossref_fallback_caches_post_fallback_result(tmp_path):
+    """The cached entry must be the upgraded Crossref hit, not the OpenAlex miss."""
+    cache = RegistryCache(path=tmp_path / "cache.db")
+    citation = Citation(
+        raw_text="10.1145/3460120.3484797",
+        kind="doi",
+        identifier="10.1145/3460120.3484797",
+    )
+    handler = _fallback_handler(openalex_status=404, crossref_status=200)
+    async with _mock_client(handler) as client:
+        result = await _verify_one(client, cache, citation)
+    assert result.status == "hit"
+    cached = cache.get("doi", citation.identifier)
+    assert cached is not None
+    assert cached.status == "hit"
+    assert cached.registry == "crossref"
+
+
+# ---------- v0.4.0: fix-doi-not-url-encoded --------------------------------
+
+
+@pytest.mark.parametrize("case", _load_jsonl("doi_url_encoding.jsonl"), ids=lambda c: c["name"])
+@pytest.mark.asyncio
+async def test_openalex_percent_encodes_doi(case):
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(200, json={"id": "https://openalex.org/W1"})
+
+    citation = Citation(raw_text=case["doi"], kind="doi", identifier=case["doi"])
+    async with _mock_client(handler) as client:
+        await openalex_resolver.verify(client, citation)
+    assert seen, "no request was issued"
+    # The encoded DOI must appear in the path, and the raw reserved chars must not
+    # leak through into the request path/query/fragment.
+    assert case["expected_encoded"] in seen[0]
+    assert "#" not in seen[0]
+    assert "?" not in seen[0].split("/works/", 1)[1]
+
+
+@pytest.mark.parametrize("case", _load_jsonl("doi_url_encoding.jsonl"), ids=lambda c: c["name"])
+@pytest.mark.asyncio
+async def test_crossref_percent_encodes_doi(case):
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(200, json={"message": {}})
+
+    citation = Citation(raw_text=case["doi"], kind="doi", identifier=case["doi"])
+    async with _mock_client(handler) as client:
+        await crossref_resolver.verify(client, citation)
+    assert seen, "no request was issued"
+    assert case["expected_encoded"] in seen[0]
+    assert "#" not in seen[0]
+    assert "?" not in seen[0].split("/works/", 1)[1]
+
+
+# ---------- v0.4.0: fix-gh-issue-regex-overmatch ---------------------------
+
+
+@pytest.mark.parametrize("case", _load_jsonl("gh_issue_overmatch.jsonl"), ids=lambda c: c["name"])
+def test_gh_issue_overmatch_cases(case):
+    citations = extract_citations(case["text"])
+    gh = [c for c in citations if c.kind == "gh_issue"]
+    if case["expect_gh_issue"]:
+        assert [c.identifier for c in gh] == [case["expected_identifier"]]
+    else:
+        assert gh == [], f"unexpected gh_issue extraction: {[c.identifier for c in gh]}"

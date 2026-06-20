@@ -1,0 +1,3 @@
+{"name": "openalex_miss_crossref_hit", "doi": "10.1145/3460120.3484797", "openalex_status": 404, "crossref_status": 200, "expected_status": "hit", "expected_registry": "crossref"}
+{"name": "both_registries_miss", "doi": "10.9999/not-real-fake-12345", "openalex_status": 404, "crossref_status": 404, "expected_status": "miss", "expected_registry": "openalex"}
+{"name": "openalex_hit_no_fallback", "doi": "10.1145/already-indexed", "openalex_status": 200, "crossref_status": 200, "expected_status": "hit", "expected_registry": "openalex"}

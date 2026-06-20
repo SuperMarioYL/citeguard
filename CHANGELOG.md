@@ -4,6 +4,61 @@ All notable changes to CiteGuard will be documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); semver per
 [SemVer 2.0](https://semver.org/).
 
+## [0.4.0] — 2026-06-20
+
+Correctness release.  Three false-positive defects let CiteGuard flag real,
+verifiable citations as fabricated — exactly the failure mode that erodes
+trust in a `--fail-on miss` CI gate.  Plus a pre-flight-gate extension that
+generalises the v0.3 lint smoke test.
+
+### Fixed
+- **Crossref fallback is now wired in** (`fix-crossref-fallback-unwired`).
+  `crossref_resolver` was imported on the surface but never invoked, so an
+  OpenAlex 404 became an immediate `miss`.  DOIs that are live on Crossref but
+  not yet backfilled into OpenAlex were reported as fabricated.  `_verify_one`
+  now falls back to Crossref on an OpenAlex DOI miss and upgrades to `hit` when
+  Crossref confirms; a `miss` is emitted only when both registries 404.  The
+  post-fallback result is what gets cached.
+- **DOIs are percent-encoded before the request path is built**
+  (`fix-doi-not-url-encoded`).  The extraction regex admits URL-reserved chars
+  (`?`, `#`, `;`); interpolating a raw DOI truncated the path at the query /
+  fragment boundary, producing a malformed URL → spurious 404 → false
+  fabrication.  Both `openalex` and `crossref` resolvers now wrap the DOI in
+  `urllib.parse.quote(doi, safe="")`.
+- **The `gh_issue` shortcut regex is left-anchored**
+  (`fix-gh-issue-regex-overmatch`).  The bare `owner/repo#N` branch had no
+  required anchor, so any `<word>/<word>#<digits>` substring matched — a DOI
+  fragment like `10.1145/3460120#2` or a path like `results/table#3` was
+  mis-extracted as a `gh_issue`, sent to the GitHub API, and flagged `miss`.
+  The shortcut form now fires only at start-of-string or after whitespace; the
+  full `github.com/...` URL form remains unconditional.
+
+### Changed — m6_preflight_lint extension
+- `make lint` now runs a **version-consistency check** (`make check-version`,
+  `scripts/check_version.py`): it asserts `pyproject [project].version` equals
+  the top `## [X.Y.Z]` CHANGELOG entry (and the matching git tag, when one
+  exists) and fails the gate on drift.  This guards the v0.3.0 publish-day
+  defect class where `pyproject` lagged the CHANGELOG and needed a hand-fix.
+- The stale-Action-major **grep guard now scans every file under
+  `.github/workflows/`** (including `demo.yml` and `release.yml`), not just
+  `ci.yml`.  The `ci.yml` self-exemption was removed — the pattern matches a
+  literal `@vN` pin, not the regex string documented in the guard step — so the
+  Action-pin policy can no longer silently lapse on a new workflow surface.
+
+### Added
+- New offline tests + golden fixtures covering each fix:
+  `tests/fixtures/crossref_fallback.jsonl`,
+  `tests/fixtures/doi_url_encoding.jsonl`,
+  `tests/fixtures/gh_issue_overmatch.jsonl`, with matching cases in
+  `tests/test_resolvers.py` (httpx `MockTransport`) asserting the
+  OpenAlex-404 → Crossref-200 upgrade, the percent-encoded request URL, and
+  the gh_issue overmatch rejections.
+
+### Not changed (still out of scope per `mvp_plan.md` §6)
+- GitLab CI integration / CI component.
+- SARIF output / GitHub code-scanning Security-tab integration.
+- LLM-based extraction recall booster.
+
 ## [0.3.0] — 2026-05-23
 
 Pre-release smoke gate.  No new user-visible feature; the surface area is

@@ -31,9 +31,7 @@ from citeguard.models import Citation, VerifyResult
 from citeguard.report import render_terminal, write_json, write_markdown
 from citeguard.resolvers import RegistryCache
 from citeguard.resolvers import arxiv as arxiv_resolver
-from citeguard.resolvers import (
-    crossref as crossref_resolver,  # noqa: F401 — kept on the import surface
-)
+from citeguard.resolvers import crossref as crossref_resolver
 from citeguard.resolvers import github as github_resolver
 from citeguard.resolvers import nvd as nvd_resolver
 from citeguard.resolvers import openalex as openalex_resolver
@@ -71,6 +69,15 @@ async def _verify_one(
             note=f"no resolver registered for kind {citation.kind!r}",
         )
     result = await resolver(client, citation)
+
+    # Crossref fallback for DOIs: OpenAlex backfill lags Crossref, so a DOI that
+    # 404s on OpenAlex but is live on Crossref is a real hit, not a fabricated
+    # citation.  Only when BOTH registries 404 do we keep the miss.
+    if citation.kind == "doi" and result.status == "miss":
+        crossref_result = await crossref_resolver.verify(client, citation)
+        if crossref_result.status == "hit":
+            result = crossref_result
+
     if cache is not None:
         cache.put(result)
     return result

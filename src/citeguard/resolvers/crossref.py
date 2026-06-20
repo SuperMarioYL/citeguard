@@ -8,6 +8,8 @@ is a miss with high confidence.
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -37,8 +39,10 @@ async def _get(client: httpx.AsyncClient, url: str) -> httpx.Response:
 
 async def verify(client: httpx.AsyncClient, citation: Citation) -> VerifyResult:
     doi = citation.identifier
+    # Percent-encode the DOI path segment so reserved chars (`?`, `#`, `;`) in
+    # the identifier don't truncate the request path → spurious 404.
     try:
-        r = await _get(client, f"{_BASE}/works/{doi}")
+        r = await _get(client, f"{_BASE}/works/{quote(doi, safe='')}")
     except Exception as exc:  # noqa: BLE001
         return VerifyResult(citation=citation, status="degraded", registry=_REGISTRY, note=str(exc))
 
