@@ -73,3 +73,6 @@ PUBLISH_BLOCKED.md
 BUILD_SETUP_NEXT_STEPS.md
 DRIFT_REPORT.md
 GIT_AUTHOR_DRIFT.md
+
+# uv lockfile (generated locally; not tracked)
+uv.lock
