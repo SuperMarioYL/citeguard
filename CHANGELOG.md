@@ -193,7 +193,7 @@ First public release covering all three v0.1 milestones from the MVP plan.
   driving the end-to-end test path.
 
 ### Added — packaging
-- `pipx install citeguard` entry point, MIT licensed.
+- `pipx install citeguard` entry point, Apache 2.0 licensed.
 - Bilingual README (zh-CN primary, English sibling).
 - GitHub Actions CI matrix: Python 3.11 + 3.12 on Ubuntu + macOS.
 - `vhs` tape under `assets/demo.tape` that regenerates the 30-second README
