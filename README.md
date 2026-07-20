@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" /></a>
   <a href="https://pypi.org/project/citeguard/"><img alt="PyPI 版本" src="https://img.shields.io/pypi/v/citeguard.svg?label=pypi" /></a>
   <a href="https://github.com/SuperMarioYL/citeguard/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/SuperMarioYL/citeguard/ci.yml?label=CI" /></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white" />
