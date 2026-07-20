@@ -8,7 +8,7 @@ version = "0.4.0"
 description = "Batch-verify every citation, DOI, arXiv ID, CVE, and commit SHA in a paper or bug report against real registries."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 authors = [{ name = "supermario_leo" }]
 keywords = [
   "citation",
@@ -25,7 +25,7 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX",
   "Operating System :: MacOS",
   "Programming Language :: Python :: 3.11",
