@@ -10,6 +10,7 @@ Covers:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -301,3 +302,26 @@ def test_cli_usage_error_for_missing_input_path():
     runner = CliRunner()
     result = runner.invoke(cli_main, ["/path/that/definitely/does/not/exist.pdf"])
     assert result.exit_code == ci_mod.EXIT_USAGE
+
+
+# ---------- v0.5.0: fix-action-version-pin-stale ---------------------------
+#
+# The composite Action's `version` input defaulted to "0.2.0", so the Install
+# step ran `pipx install "citeguard==0.2.0"` — predating every v0.4.0
+# correctness fix (Crossref fallback, DOI percent-encoding, gh_issue anchor).
+# The same stale `@v0.2.0` pin was duplicated in the example workflow + READMEs.
+# These guards pin the default + the consumer-facing files to the shipped tag.
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_action_version_default_tracks_shipped_version():
+    action = (_REPO_ROOT / "action.yml").read_text(encoding="utf-8")
+    assert 'default: "0.5.0"' in action, "action.yml `version` input default is stale"
+
+
+def test_no_stale_citeguard_action_pin_in_consumer_facing_files():
+    stale = re.compile(r"citeguard@v0\.[0-4]\.\d+")
+    for rel in ("action.yml", "examples/citeguard-action.yml", "README.md", "README.en.md"):
+        body = (_REPO_ROOT / rel).read_text(encoding="utf-8")
+        assert not stale.search(body), f"stale citeguard action pin in {rel}: {stale.findall(body)}"

@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" /></a>
   <a href="https://pypi.org/project/citeguard/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/citeguard.svg?label=pypi" /></a>
   <a href="https://github.com/SuperMarioYL/citeguard/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/SuperMarioYL/citeguard/ci.yml?label=CI" /></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white" />
@@ -215,7 +215,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: SuperMarioYL/citeguard@v0.2.0
+      - uses: SuperMarioYL/citeguard@v0.5.0
         with:
           fail-on: miss        # journals: keep `miss`; OSS: start with `none`
           max-misses: 0
@@ -293,7 +293,7 @@ Issues welcome — especially:
 
 ## License
 
-[MIT](./LICENSE).  Free for commercial, academic, and personal use — and
+[Apache-2.0](./LICENSE).  Free for commercial, academic, and personal use — and
 that's not going to change.
 
 ## Acknowledgements

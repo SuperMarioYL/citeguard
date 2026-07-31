@@ -212,7 +212,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: SuperMarioYL/citeguard@v0.2.0
+      - uses: SuperMarioYL/citeguard@v0.5.0
         with:
           fail-on: miss        # journals: keep miss；OSS: 起步可设 none
           max-misses: 0
@@ -283,7 +283,7 @@ pre-commit install --hook-type pre-push   # 把同套 lint 接到 git push 前
 
 ## License
 
-[MIT](./LICENSE)。商业 / 学术 / 个人皆免费，且无计划改变这点。
+[Apache-2.0](./LICENSE)。商业 / 学术 / 个人皆免费，且无计划改变这点。
 
 ## 致谢
 

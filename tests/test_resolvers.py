@@ -381,3 +381,38 @@ def test_gh_issue_overmatch_cases(case):
         assert [c.identifier for c in gh] == [case["expected_identifier"]]
     else:
         assert gh == [], f"unexpected gh_issue extraction: {[c.identifier for c in gh]}"
+
+
+# ---------- v0.5.0: fix-doi-truncated-before-query-fragment ----------------
+#
+# `_DOI_RE`'s right-boundary lookahead admitted `.` but NOT `?` or `#`.  When a
+# DOI suffix containing a `.` was followed by `?`/`#` the greedy class could not
+# satisfy the lookahead at the real end, so the engine backtracked to the last
+# `.` boundary and returned the TRUNCATED prefix (`10.1145/3460120` instead of
+# `10.1145/3460120.3484797`); when the suffix had no `.` the DOI was dropped
+# entirely.  These cases assert the full DOI is extracted and stops at the
+# query/fragment delimiter.
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_doi"),
+    [
+        # `?` after a `.`-containing suffix: pre-fix backtracks to the last `.`
+        # boundary and returns the TRUNCATED prefix 10.1145/3460120.
+        ("see 10.1145/3460120.3484797?ref=x", "10.1145/3460120.3484797"),
+        # `#` fragment after a `.`-containing suffix: same `.`-backtracking truncation.
+        ("see https://doi.org/10.1145/3460120.3484797#sec1 here", "10.1145/3460120.3484797"),
+        # `#` fragment after a no-`.` suffix: pre-fix the DOI is DROPPED entirely
+        # (no boundary char satisfies the lookahead, no `.` to backtrack to).
+        ("see 10.1234/foo#section-2 in the text", "10.1234/foo"),
+        # bare DOI fragment `#<digits>` in prose: pre-fix dropped; post-fix the `#`
+        # is a right boundary so the DOI (sans fragment) is extracted.
+        ("see 10.1145/3460120#2 in the text", "10.1145/3460120"),
+        # regression guard: a plain DOI followed by whitespace still extracts fully.
+        ("plain 10.1145/3460120.3484797 end", "10.1145/3460120.3484797"),
+    ],
+)
+def test_doi_not_truncated_before_query_fragment(text, expected_doi):
+    citations = extract_citations(text)
+    dois = [c.identifier for c in citations if c.kind == "doi"]
+    assert expected_doi in dois, f"expected DOI {expected_doi!r}; got {dois}"

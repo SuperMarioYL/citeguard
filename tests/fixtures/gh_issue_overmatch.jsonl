@@ -3,3 +3,5 @@
 {"name": "bare_shortcut_extracts", "text": "Fixed upstream in owner/repo#123 last week.", "expect_gh_issue": true, "expected_identifier": "owner/repo#123"}
 {"name": "github_issue_url_extracts", "text": "See github.com/owner/repo/issues/5 for the report.", "expect_gh_issue": true, "expected_identifier": "owner/repo#5"}
 {"name": "github_pull_url_extracts", "text": "The patch landed in github.com/owner/repo/pull/9 today.", "expect_gh_issue": true, "expected_identifier": "owner/repo#9"}
+{"name": "bare_doi_fragment_after_ws_not_gh", "text": "see 10.1145/3460120#2 in the text", "expect_gh_issue": false}
+{"name": "domain_owner_path_not_gh", "text": "see example.com/docs#2 here", "expect_gh_issue": false}

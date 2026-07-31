@@ -4,6 +4,55 @@ All notable changes to CiteGuard will be documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); semver per
 [SemVer 2.0](https://semver.org/).
 
+## [0.5.0] — 2026-08-01
+
+Correctness + release-hygiene release.  Five fix milestones from the autonomous
+grill (signal-harvest → bug-hunt on shipped v0.4.0 source → 4 parallel critics
+PASS): the GitHub-Action version pin stops shipping pre-fix logic, two
+extraction-regex false-positive holes close, PyPI trusted-publishing is wired,
+and the post-ship Apache-2.0 license adoption is reconciled locally.  No new
+audience / distribution channel / out-of-scope scope expansion.
+
+### Fixed
+- **Action version pin bumped off 0.2.0** (`fix-action-version-pin-stale`).
+  The composite Action's `version` input defaulted to `0.2.0`, and the same
+  stale `@v0.2.0` pin was duplicated in `examples/citeguard-action.yml`,
+  `README.md`, and `README.en.md`.  v0.2.0 predates every v0.4.0 correctness
+  fix, so the documented Action channel silently shipped the exact
+  false-fabrication regressions v0.4.0 repaired.  The default is now `0.5.0`
+  and all consumer-facing pins point at `@v0.5.0`.
+- **DOIs followed by `?` or `#` are no longer truncated/dropped**
+  (`fix-doi-truncated-before-query-fragment`).  `_DOI_RE`'s right-boundary
+  lookahead admitted `.` but not `?`/`#`; a DOI suffix containing a `.` followed
+  by `?`/`#` backtracked to the last `.` boundary and returned the truncated
+  prefix (e.g. `10.1145/3460120.3484797?ref=x` → `10.1145/3460120`), and a
+  no-`.` suffix was dropped entirely.  `?#` was added to the boundary class so
+  the full DOI matches and stops at the query/fragment delimiter — this also
+  makes the v0.4.0 resolver-side percent-encoding reachable for `?`/`#`.
+- **The `gh_issue` shortcut no longer matches DOI fragments / domain paths**
+  (`fix-gh-issue-overmatches-dot-owner`).  The owner character class admitted
+  `.`, so a bare `10.1145/3460120#2` after whitespace (or `example.com/docs#2`)
+  was mis-extracted as a `gh_issue` and dispatched to the GitHub REST API
+  (404 → false `miss`/fabricated).  `.` was dropped from the OWNER class
+  (`[A-Za-z0-9][A-Za-z0-9_-]{0,38}`); GitHub org/user names never contain
+  dots, so no real `owner/repo#N` reference is lost.  The repo class keeps `.`.
+
+### Changed — release hygiene
+- **PyPI trusted-publishing repaired** (`repair-pypi-trusted-publishing`).
+  v0.3.0/v0.4.0 never reached PyPI (latest = 0.2.0);
+  `.github/workflows/release.yml` already wires
+  `pypa/gh-action-pypi-publish@release/v1` with `permissions: id-token: write`
+  and the `pypi` environment (no API token).  The remaining step is the one-time
+  PyPI-side OIDC trusted-publisher enrollment on
+  pypi.org/manage/account/publishing (external, non-code) — once confirmed, the
+  next tag auto-publishes and `pipx install citeguard==0.5.0` resolves.
+- **Apache-2.0 license reconciled locally** (`reconcile-apache2-license`).
+  The 2026-07-20 Apache-2.0 adoption had landed GitHub-only (plan/source drift);
+  the local build clone still carried MIT.  `LICENSE` is now the canonical
+  Apache-2.0 text, `pyproject.toml` `[project].license` is `Apache-2.0` (and the
+  trove classifier updated), and the README license badges / sections in both
+  locales point at Apache-2.0.
+
 ## [0.4.0] — 2026-06-20
 
 Correctness release.  Three false-positive defects let CiteGuard flag real,

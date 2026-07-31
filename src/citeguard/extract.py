@@ -20,7 +20,7 @@ from citeguard.models import Citation, ContextSpan
 _DOI_RE = re.compile(
     r"""\b(?:doi:\s*|https?://(?:dx\.)?doi\.org/)?      # optional prefix
         (10\.\d{4,9}/[-._;()/:A-Z0-9]+)                  # the DOI proper
-        (?=[\s.,;)\]]|$)                                 # right boundary
+        (?=[\s.,;)\]?#]|$)                               # right boundary (? and # stop truncation)
     """,
     re.IGNORECASE | re.VERBOSE,
 )
@@ -64,7 +64,7 @@ _COMMIT_RE = re.compile(
 # as a gh_issue, sent to the GitHub API, and flagged as a fabricated citation.
 _GH_ISSUE_RE = re.compile(
     r"""(?:(?:https?://)?github\.com/|(?<=\s)|^)        # github URL, or left-anchor (BOS / after whitespace)
-        ([A-Za-z0-9][A-Za-z0-9._-]{0,38})                 # owner
+        ([A-Za-z0-9][A-Za-z0-9_-]{0,38})                 # owner (no '.' — rejects DOI/domain owners)
         /
         ([A-Za-z0-9][A-Za-z0-9._-]{0,99})                 # repo
         (?:/(?:issues|pull)/|\#)
