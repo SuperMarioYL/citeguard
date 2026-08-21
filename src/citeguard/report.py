@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+from citeguard import __version__
 from citeguard.models import VerifyResult
 
 _STATUS_GLYPH = {"hit": "✓", "miss": "✗", "degraded": "?"}
@@ -63,7 +64,7 @@ def render_terminal(results: Iterable[VerifyResult], console: Console | None = N
 def to_json(results: Iterable[VerifyResult]) -> str:
     """Stable JSON sidecar.  Schema is `{generator, results:[VerifyResult]}`."""
     payload = {
-        "generator": "citeguard/0.2",
+        "generator": f"citeguard/{__version__}",
         "results": [r.model_dump(mode="json") for r in results],
     }
     return json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)

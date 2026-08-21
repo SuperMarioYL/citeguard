@@ -72,11 +72,26 @@ async def _verify_one(
 
     # Crossref fallback for DOIs: OpenAlex backfill lags Crossref, so a DOI that
     # 404s on OpenAlex but is live on Crossref is a real hit, not a fabricated
-    # citation.  Only when BOTH registries 404 do we keep the miss.
+    # citation.  Only when BOTH registries 404 do we keep the miss.  When the
+    # Crossref fallback itself is transiently unreachable it returns `degraded`,
+    # which means we have no authoritative second opinion — in that case we must
+    # NOT keep the OpenAlex miss, because `cache.put` would freeze it as a
+    # fabricated citation for the 7-day TTL on a Crossref blip.  Emit a degraded
+    # result instead: the cache refuses to persist degraded, so both registries
+    # are retried next run, and the outcome stays advisory under `--fail-on miss`.
     if citation.kind == "doi" and result.status == "miss":
         crossref_result = await crossref_resolver.verify(client, citation)
         if crossref_result.status == "hit":
             result = crossref_result
+        elif crossref_result.status == "degraded":
+            result = VerifyResult(
+                citation=citation,
+                status="degraded",
+                registry="openalex",
+                note="OpenAlex miss; Crossref fallback unreachable",
+            )
+        # crossref miss → both registries agree the DOI is absent; the OpenAlex
+        # miss is the authoritative fabricated-citation verdict.
 
     if cache is not None:
         cache.put(result)

@@ -4,6 +4,49 @@ All notable changes to CiteGuard will be documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); semver per
 [SemVer 2.0](https://semver.org/).
 
+## [0.6.0] — 2026-08-21
+
+Correctness + release-hygiene release.  Three fix milestones from the
+autonomous grill close defects that let CiteGuard freeze a false
+fabricated-citation, ship a stale `citeguard --version`, and emit a JSON
+sidecar that mis-reports its producing version — each erodes the
+zero-false-alarm / version-consistency promise the last releases hardened.
+No new audience / distribution channel / out-of-scope expansion.
+
+### Fixed
+- **An OpenAlex miss is no longer cached when the Crossref fallback was
+  unreachable** (`fix-crossref-fallback-caches-miss-on-degraded`).
+  `_verify_one` only upgraded on a Crossref `hit`; when Crossref was
+  transiently unreachable (transport error / 5xx after the 3 tenacity
+  retries) it returned `degraded`, the guard kept the OpenAlex `miss`, and
+  `cache.put` froze it as a fabricated citation for the 7-day TTL — so a
+  real Crossref-but-not-OpenAlex DOI became a false `miss` under
+  `--fail-on miss` for a week whenever Crossref hiccupped during the
+  fallback.  The fallback now emits a `degraded` result (registry
+  `openalex`, note `OpenAlex miss; Crossref fallback unreachable`) so the
+  cache (which refuses to persist `degraded`) retries both registries next
+  run and the outcome stays advisory under `--fail-on miss` instead of a
+  hard fabricated-citation miss.
+- **`__version__` bumped to 0.6.0 and the version gate now covers it**
+  (`fix-init-version-drift-vs-pyproject`).  `src/citeguard/__init__.py`
+  was stuck at `0.4.0` while `pyproject.toml` / `CHANGELOG.md` were
+  `0.5.0`, so `citeguard --version` on a 0.5.0 install printed `0.4.0`.
+  The m6 `check_version.py` gate only compared pyproject ↔ CHANGELOG ↔
+  git tag, never `__init__.py`, so the drift passed every gate.  The gate
+  now also asserts `src/citeguard/__init__.py` `__version__` equals the
+  pyproject version, catching this third drift source.
+- **The JSON sidecar `generator` now tracks the package version**
+  (`fix-json-sidecar-stale-generator-string`).  `report.to_json` hardcoded
+  `"citeguard/0.2"`, so every `*.citeguard.json` sidecar claimed to be
+  produced by citeguard 0.2 forever (stale across v0.3 / v0.4 / v0.5).  It
+  now derives the value from `citeguard.__version__`; the README JSON
+  snippets (zh + en) are refreshed to match.
+
+### Not changed (still out of scope per `mvp_plan.md` §6)
+- GitLab CI integration / CI component.
+- SARIF output / GitHub code-scanning Security-tab integration.
+- LLM-based extraction recall booster.
+
 ## [0.5.0] — 2026-08-01
 
 Correctness + release-hygiene release.  Five fix milestones from the autonomous

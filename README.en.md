@@ -162,7 +162,7 @@ The JSON sidecar has a stable schema downstream tools can consume:
 
 ```json
 {
-  "generator": "citeguard/0.2",
+  "generator": "citeguard/0.6.0",
   "results": [
     {
       "citation": {"raw_text": "arXiv:1706.03762", "kind": "arxiv", "identifier": "1706.03762"},

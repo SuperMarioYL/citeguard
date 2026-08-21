@@ -160,7 +160,7 @@ JSON 边车的 schema 稳定，下游脚本可直接消费：
 
 ```json
 {
-  "generator": "citeguard/0.2",
+  "generator": "citeguard/0.6.0",
   "results": [
     {
       "citation": {"raw_text": "arXiv:1706.03762", "kind": "arxiv", "identifier": "1706.03762"},

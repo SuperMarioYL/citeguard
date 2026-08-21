@@ -13,6 +13,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from citeguard import __version__
 from citeguard.cli import _verify_one
 from citeguard.extract import extract_citations, extract_from_path
 from citeguard.models import Citation, NearestMatch, VerifyResult
@@ -416,3 +417,67 @@ def test_doi_not_truncated_before_query_fragment(text, expected_doi):
     citations = extract_citations(text)
     dois = [c.identifier for c in citations if c.kind == "doi"]
     assert expected_doi in dois, f"expected DOI {expected_doi!r}; got {dois}"
+
+
+# ---------- v0.6.0: fix-crossref-fallback-caches-miss-on-degraded --------
+#
+# `_verify_one` only upgraded on a Crossref `hit`.  When Crossref was
+# transiently unreachable it returned `degraded`, the guard kept the OpenAlex
+# `miss`, and `cache.put` froze it as a fabricated citation for the 7-day TTL
+# — a real Crossref-but-not-OpenAlex DOI became a false `miss` for a week
+# whenever Crossref hiccupped during the fallback, defeating the cache's
+# "never freeze a hiccup" invariant.  The fallback now emits `degraded` so it
+# is neither cached nor a hard miss under `--fail-on miss`.
+
+
+@pytest.mark.asyncio
+async def test_crossref_fallback_degraded_is_not_cached_as_miss(tmp_path):
+    cache = RegistryCache(path=tmp_path / "cache.db")
+    citation = Citation(
+        raw_text="10.1145/3460120.3484797",
+        kind="doi",
+        identifier="10.1145/3460120.3484797",
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        if "openalex" in host:
+            if "/works/doi:" in str(request.url):
+                # OpenAlex has no record of this DOI; its `_nearest` search
+                # reuses the same base and is answered below.
+                if request.url.params.get("search") is not None:
+                    return httpx.Response(200, json={"results": []})
+                return httpx.Response(404)
+            return httpx.Response(200, json={"results": []})
+        # Crossref is transiently unreachable → crossref.verify returns
+        # `degraded`.  A non-TransportError is raised so the tenacity retry
+        # (which only retries TransportError / HTTPStatusError) does not add
+        # ~1.5s of backoff to the test; the end state is identical.
+        raise RuntimeError("crossref: simulated transient outage")
+
+    async with _mock_client(handler) as client:
+        result = await _verify_one(client, cache, citation)
+
+    assert result.status == "degraded"
+    assert result.registry == "openalex"
+    assert "Crossref fallback unreachable" in result.note
+    # The degraded result must NOT have been cached — the next run retries.
+    assert cache.get("doi", citation.identifier) is None
+
+
+# ---------- v0.6.0: fix-json-sidecar-stale-generator-string --------------
+#
+# `report.to_json` hardcoded `"citeguard/0.2"`, so every JSON sidecar claimed
+# to be produced by citeguard 0.2 forever (stale across v0.3/v0.4/v0.5).  The
+# existing `test_to_json_round_trips_results` only asserted the `citeguard/`
+# prefix, so the drift was invisible.  The generator now derives from
+# `citeguard.__version__`.
+
+
+def test_to_json_generator_tracks_package_version():
+    citation = Citation(raw_text="x", kind="doi", identifier="10.1/x")
+    payload = to_json(
+        [VerifyResult(citation=citation, status="hit", registry="openalex", evidence_url="u")]
+    )
+    parsed = json.loads(payload)
+    assert parsed["generator"] == f"citeguard/{__version__}"
