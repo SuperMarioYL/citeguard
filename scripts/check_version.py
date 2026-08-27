@@ -9,7 +9,11 @@ lagged the CHANGELOG): assert that
   * ``src/citeguard/__init__.py`` ``__version__`` equals that same version
     (v0.6.0 extension — closes the drift class where ``citeguard --version``
     shipped a stale ``__version__`` because the gate only watched two of the
-    three version sources), and
+    three version sources),
+  * ``action.yml`` ``version`` input ``default`` equals that same version
+    (v0.7.0 extension — closes the drift class where the composite Action
+    installed a stale ``citeguard==<old>`` because the gate never watched the
+    Action's pinned default as a fourth version source), and
   * when a git tag for that version already exists, it matches too.
 
 Exit 0 on agreement, 1 on drift.  Stdlib-only so it runs anywhere ``make
@@ -30,12 +34,16 @@ _ROOT = Path(__file__).resolve().parent.parent
 _PYPROJECT = _ROOT / "pyproject.toml"
 _CHANGELOG = _ROOT / "CHANGELOG.md"
 _INIT = _ROOT / "src" / "citeguard" / "__init__.py"
+_ACTION = _ROOT / "action.yml"
 
 # Matches the newest Keep-a-Changelog version heading, e.g. `## [0.4.0] — 2026-06-20`.
 _CHANGELOG_HEADING = re.compile(r"^##\s*\[(\d+\.\d+\.\d+)\]")
 
 # Matches `__version__ = "X.Y.Z"` at the top of src/citeguard/__init__.py.
 _INIT_VERSION = re.compile(r'^__version__\s*=\s*["\'](\d+\.\d+\.\d+)["\']')
+
+# Matches `default: "X.Y.Z"` (the `version` input default inside action.yml).
+_ACTION_VERSION_DEFAULT = re.compile(r'^\s*default:\s*["\'](\d+\.\d+\.\d+)["\']')
 
 
 def _pyproject_version() -> str:
@@ -62,6 +70,29 @@ def _init_version() -> str:
         if m:
             return m.group(1)
     raise SystemExit('check-version: no `__version__ = "X.Y.Z"` found in src/citeguard/__init__.py')
+
+
+def _action_version_default() -> str | None:
+    """Read the ``version`` input ``default`` from ``action.yml``.
+
+    Tracks the first ``default:`` line inside the ``version:`` input block.
+    Returns ``None`` when ``action.yml`` is absent so synthetic test trees
+    that do not model the Action do not trip the gate (best-effort, like the
+    git-tag check); in a real repo the file always exists, so the check is
+    strict there.
+    """
+    if not _ACTION.exists():
+        return None
+    in_version = False
+    for line in _ACTION.read_text(encoding="utf-8").splitlines():
+        if line.strip() == "version:":
+            in_version = True
+            continue
+        if in_version:
+            m = _ACTION_VERSION_DEFAULT.match(line)
+            if m:
+                return m.group(1)
+    raise SystemExit("check-version: no `version` input default found in action.yml")
 
 
 def _git_tag_for(version: str) -> bool:
@@ -100,13 +131,26 @@ def main() -> int:
         )
         return 1
 
+    action = _action_version_default()
+    if action is not None and action != py:
+        print(
+            f"check-version: DRIFT — action.yml `version` default {action!r}"
+            f" != pyproject version {py!r}",
+            file=sys.stderr,
+        )
+        return 1
+
     # If this version is already tagged, the tag must agree (it will, since the
     # tag *is* vX.Y.Z — this guards a manual mis-tag).  A missing tag is fine:
     # the release isn't published yet.
     if _git_tag_for(py):
-        print(f"check-version: OK — pyproject == CHANGELOG == __init__ == git tag v{py}")
+        print(
+            f"check-version: OK — pyproject == CHANGELOG == __init__ == action.yml == git tag v{py}"
+        )
     else:
-        print(f"check-version: OK — pyproject == CHANGELOG == __init__ == {py} (no tag yet)")
+        print(
+            f"check-version: OK — pyproject == CHANGELOG == __init__ == action.yml == {py} (no tag yet)"
+        )
     return 0
 
 

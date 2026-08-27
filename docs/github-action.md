@@ -35,7 +35,7 @@ permission entirely.
 
 | Input | Type | Default | Meaning |
 | :--- | :--- | :--- | :--- |
-| `version` | string | `0.5.0` | Pinned `citeguard` version installed via `pipx`. Set to `latest` to track HEAD. |
+| `version` | string | `0.6.0` | Pinned `citeguard` version installed via `pipx`. Set to `latest` to track HEAD. |
 | `fail-on` | enum | `miss` | Which outcome trips a failing check. One of `none` / `miss` / `degraded`. |
 | `max-misses` | integer | `0` | Tolerate up to N misses before `fail-on` triggers. |
 | `paths` | glob list | `**/*.pdf,**/*.tex,**/*.md` | Comma-separated glob filter applied to the PR's changed files. |
@@ -115,7 +115,7 @@ restricts egress, allowlist those hosts before installing.
 
 ## Versioning
 
-* `@v0.5.0` — pinned major+minor+patch. Recommended for production.
+* `@v0.6.0` — pinned major+minor+patch. Recommended for production.
 * `@v0` — latest 0.x. Use only if you can tolerate flag additions across
   minor versions.
 * `@main` — bleeding edge. Do not use in production.

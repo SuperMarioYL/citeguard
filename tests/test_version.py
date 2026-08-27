@@ -1,6 +1,6 @@
-"""Version-consistency regression tests (m6_preflight_lint extension, v0.6.0).
+"""Version-consistency regression tests (m6_preflight_lint extension).
 
-Covers `fix-init-version-drift-vs-pyproject`:
+Covers `fix-init-version-drift-vs-pyproject` (v0.6.0):
   * `citeguard.__version__` must equal the `pyproject.toml` version (the
     user-visible defect was `citeguard --version` printing a stale version on
     a 0.5.0 install because `__init__.py` was stuck at `0.4.0`), and
@@ -8,6 +8,12 @@ Covers `fix-init-version-drift-vs-pyproject`:
     from `pyproject.toml`.  Pre-fix the gate only watched two of the three
     version sources (pyproject ↔ CHANGELOG ↔ git tag), so this drift class
     slipped through every release gate.
+
+Covers `fix-action-version-pin-stale-again` (v0.7.0):
+  * `action.yml`'s `version` input default must equal the `pyproject.toml`
+    version — the gate now watches a fourth source so a stale Action pin (the
+    documented distribution channel installing a pre-current build) can no
+    longer ship through `make lint` / the release gate.
 """
 
 from __future__ import annotations
@@ -63,14 +69,54 @@ def test_check_version_detects_init_py_drift(tmp_path):
     # Drifted __init__.py: still on 0.5.0 while pyproject / CHANGELOG are 0.6.0.
     init_py.write_text('__version__ = "0.5.0"\n', encoding="utf-8")
 
+    # An aligned action.yml in the temp tree isolates this test from the real
+    # repo's action.yml (the v0.7.0 gate now reads that 4th source too).
+    action_yml = tmp_path / "action.yml"
+    action_yml.write_text('inputs:\n  version:\n    default: "0.6.0"\n', encoding="utf-8")
+
     # Point the freshly-loaded module's path globals at the temp tree.
     cv._PYPROJECT = pyproject
     cv._CHANGELOG = changelog
     cv._INIT = init_py
+    cv._ACTION = action_yml
     cv._ROOT = tmp_path
 
     assert cv.main() == 1, "drifted __init__.py must fail the version gate"
 
     # Green tree: align __init__.py → gate passes.
     init_py.write_text('__version__ = "0.6.0"\n', encoding="utf-8")
+    assert cv.main() == 0, "aligned versions must pass the version gate"
+
+
+def test_check_version_detects_action_yml_drift(tmp_path):
+    """check_version.py must fail the gate when action.yml's `version` default
+    drifts from pyproject (v0.7.0 extension — the fourth version source).
+
+    Pre-extension the gate never watched action.yml, so a stale
+    `default: "0.5.0"` shipped through every gate while pyproject was 0.6.0.
+    """
+    cv = _load_check_version()
+
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text('[project]\nversion = "0.6.0"\n', encoding="utf-8")
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text("# Changelog\n\n## [0.6.0] — 2026-08-21\n\nbody\n", encoding="utf-8")
+    init_py = tmp_path / "src" / "citeguard" / "__init__.py"
+    init_py.parent.mkdir(parents=True)
+    init_py.write_text('__version__ = "0.6.0"\n', encoding="utf-8")
+
+    # Drifted action.yml: default stuck on 0.5.0 while the rest are 0.6.0.
+    action_yml = tmp_path / "action.yml"
+    action_yml.write_text('inputs:\n  version:\n    default: "0.5.0"\n', encoding="utf-8")
+
+    cv._PYPROJECT = pyproject
+    cv._CHANGELOG = changelog
+    cv._INIT = init_py
+    cv._ACTION = action_yml
+    cv._ROOT = tmp_path
+
+    assert cv.main() == 1, "drifted action.yml default must fail the version gate"
+
+    # Green tree: align action.yml → gate passes.
+    action_yml.write_text('inputs:\n  version:\n    default: "0.6.0"\n', encoding="utf-8")
     assert cv.main() == 0, "aligned versions must pass the version gate"

@@ -215,7 +215,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: SuperMarioYL/citeguard@v0.5.0
+      - uses: SuperMarioYL/citeguard@v0.6.0
         with:
           fail-on: miss        # journals: keep `miss`; OSS: start with `none`
           max-misses: 0

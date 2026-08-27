@@ -11,6 +11,7 @@ Covers:
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -304,24 +305,43 @@ def test_cli_usage_error_for_missing_input_path():
     assert result.exit_code == ci_mod.EXIT_USAGE
 
 
-# ---------- v0.5.0: fix-action-version-pin-stale ---------------------------
+# ---------- v0.5.0->v0.7.0: fix-action-version-pin-stale-again ----------------
 #
-# The composite Action's `version` input defaulted to "0.2.0", so the Install
-# step ran `pipx install "citeguard==0.2.0"` — predating every v0.4.0
-# correctness fix (Crossref fallback, DOI percent-encoding, gh_issue anchor).
-# The same stale `@v0.2.0` pin was duplicated in the example workflow + READMEs.
-# These guards pin the default + the consumer-facing files to the shipped tag.
+# The composite Action's `version` input defaulted to a stale tag, so the
+# Install step ran `pipx install "citeguard==<old>"` predating the current
+# correctness fixes, and the same stale `@v<old>` pin was duplicated in the
+# example workflow + both READMEs. The original v0.5.0 guard hardcoded the
+# expected value and used a regex that only flagged v0.0-v0.4, so a
+# one-release-behind pin shipped green. These guards now DERIVE the shipped
+# version from pyproject.toml and reject any pin below it, so the next drift
+# fails the gate instead of silently passing.
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+_PYPROJECT = _REPO_ROOT / "pyproject.toml"
+
+
+def _shipped_version() -> str:
+    """The version the Action default + consumer-facing pins must track."""
+    data = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))
+    return data["project"]["version"]
 
 
 def test_action_version_default_tracks_shipped_version():
+    shipped = _shipped_version()
     action = (_REPO_ROOT / "action.yml").read_text(encoding="utf-8")
-    assert 'default: "0.5.0"' in action, "action.yml `version` input default is stale"
+    assert f'default: "{shipped}"' in action, (
+        f"action.yml `version` input default is stale (expected {shipped})"
+    )
 
 
 def test_no_stale_citeguard_action_pin_in_consumer_facing_files():
-    stale = re.compile(r"citeguard@v0\.[0-4]\.\d+")
+    shipped = _shipped_version()
+    # Widen from the old [0-4] range so a stale v0.5+ pin is no longer
+    # invisible. Each matched pin must equal the shipped version — a
+    # one-release-behind pin fails the gate.
+    pin = re.compile(r"citeguard@v0\.[0-9]\.\d+")
+    expected = f"citeguard@v{shipped}"
     for rel in ("action.yml", "examples/citeguard-action.yml", "README.md", "README.en.md"):
         body = (_REPO_ROOT / rel).read_text(encoding="utf-8")
-        assert not stale.search(body), f"stale citeguard action pin in {rel}: {stale.findall(body)}"
+        stale = [m.group(0) for m in pin.finditer(body) if m.group(0) != expected]
+        assert not stale, f"stale citeguard action pin in {rel}: {stale}"

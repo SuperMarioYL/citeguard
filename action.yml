@@ -13,7 +13,7 @@ inputs:
   version:
     description: "Pinned citeguard version to install from PyPI (use 'latest' to skip the pin)."
     required: false
-    default: "0.5.0"
+    default: "0.6.0"
   fail-on:
     description: "Which outcome trips a failing check: none | miss | degraded."
     required: false
