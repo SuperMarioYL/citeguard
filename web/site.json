@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "name": "citeguard",
+  "github": "https://github.com/SuperMarioYL/citeguard",
+  "host": "citeguard.lei6393.com",
+  "lang": { "primary": "zh", "toggle": true },
+  "accent": ["#3fb950"],
+  "hero": {
+    "eyebrow": {
+      "zh": "一条命令 · 不靠 LLM · 真 registry",
+      "en": "One command · No LLM · Real registries"
+    },
+    "headline": {
+      "zh": "粘一篇论文\n红绿表点出每条编造的引用",
+      "en": "Paste a paper\nA red/green table flags every fabricated citation"
+    },
+    "sub": {
+      "zh": "DOI、arXiv、CVE、commit、issue 一次性核验到 OpenAlex、Crossref、arXiv、NVD、GitHub——不靠 LLM，宁可漏报也不误报红条。",
+      "en": "Every DOI, arXiv ID, CVE, commit, and issue is verified against OpenAlex, Crossref, arXiv, NVD, and GitHub at once — no LLM, would rather miss than false-alarm."
+    },
+    "command": "citeguard paper.pdf",
+    "cta": { "zh": "开始核验", "en": "Start verifying" },
+    "ctaGithub": { "zh": "在 GitHub 查看", "en": "View on GitHub" }
+  },
+  "advantages": [
+    {
+      "title": {
+        "zh": "一条命令，红绿表说清每条引用真假",
+        "en": "One command, a red/green verdict on every citation"
+      },
+      "body": {
+        "zh": "粘 PDF / .tex / .md：绿勾=真 registry 命中并带证据链接，红叉=找不到且给最多 3 个最接近候选，黄问号=超时或限流。",
+        "en": "Paste a PDF / .tex / .md: green check = real registry hit with an evidence link; red cross = not found, with up to 3 nearest matches; yellow = timeout or rate-limit."
+      },
+      "chips": [
+        "› 绿 / 红 / 黄三态",
+        "› 带证据链接",
+        "› 最多 3 个近似候选"
+      ]
+    },
+    {
+      "title": {
+        "zh": "CI 里每个 PR 自动核验",
+        "en": "Every PR auto-verified in CI"
+      },
+      "body": {
+        "zh": "把 GitHub Action 放进仓库，改 .pdf / .tex / .md 的 PR 自动跑核验，红绿报告贴在 PR 评论上，按 miss / degraded 阈值决定是否挂掉。",
+        "en": "Drop the GitHub Action in and every PR touching .pdf / .tex / .md runs a check, posts a sticky red/green comment, and fails the build on your miss / degraded threshold."
+      },
+      "chips": [
+        "› sticky PR 评论",
+        "› 按阈值挂掉",
+        "› 只核验改动文件"
+      ]
+    },
+    {
+      "title": {
+        "zh": "五类标识符 × 五个真 registry",
+        "en": "Five identifier types × five real registries"
+      },
+      "body": {
+        "zh": "DOI、arXiv、CVE、commit SHA、owner/repo#issue 一次性打到 OpenAlex、Crossref、arXiv、NVD、GitHub——并发跑、退避重试、7 天缓存兜底。",
+        "en": "DOI, arXiv ID, CVE, commit SHA, owner/repo#issue — fanned out to OpenAlex, Crossref, arXiv, NVD, and GitHub at once, with backoff and a 7-day cache."
+      },
+      "chips": [
+        "› 5 类标识符",
+        "› 5 个 registry",
+        "› 7 天缓存"
+      ]
+    },
+    {
+      "title": {
+        "zh": "不靠 LLM，精度优先",
+        "en": "No LLM. Precision first."
+      },
+      "body": {
+        "zh": "抽取只走正则、不调用 LLM，宁可漏报也不误报红条；同时落一份 schema 稳定的 JSON 边车，给 desk-reject 流水线直接消费。",
+        "en": "Extraction runs on regex alone — no LLM — and would rather miss than false-alarm. A stable-schema JSON sidecar drops alongside for your desk-reject pipeline to consume."
+      },
+      "chips": [
+        "› 不调用 LLM",
+        "› JSON 边车",
+        "› Apache-2.0"
+      ]
+    }
+  ],
+  "scene": {
+    "kind": "hub-nodes",
+    "nodes": ["OpenAlex", "Crossref", "arXiv", "NVD", "GitHub"]
+  },
+  "cta": {
+    "headline": {
+      "zh": "投稿前，先让 registry 说话",
+      "en": "Before you submit, let the registries speak"
+    },
+    "sub": {
+      "zh": "一条命令装上，本地或 CI 都能跑。",
+      "en": "One command to install — runs locally or in CI."
+    },
+    "button": { "zh": "pipx install citeguard", "en": "pipx install citeguard" }
+  },
+  "footer": {
+    "tag": {
+      "zh": "一条命令的引文核验工具",
+      "en": "The one-command citation verifier"
+    }
+  }
+}
