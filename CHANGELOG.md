@@ -4,6 +4,61 @@ All notable changes to CiteGuard will be documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); semver per
 [SemVer 2.0](https://semver.org/).
 
+## [0.8.0] — 2026-09-05
+
+Correctness + release-hygiene release.  v0.7.0 itself shipped with every
+version string frozen at 0.6.0 (the exact drift class the last four releases
+hardened) because the pre-flight gate only asked "does tag `v{py}` exist" and
+never noticed the higher `v0.7.0` tag — so v0.8.0 closes that gate hole,
+aligns the version strings, and fixes three more defects surfaced by the
+autonomous grill.  No new audience / distribution channel / out-of-scope
+expansion.
+
+### Fixed
+- **Version strings aligned to 0.8.0 and the gate no longer blind to a higher
+  release tag** (`fix-version-strings-frozen-at-0.6.0`).  The git tag `v0.7.0`
+  existed but `pyproject.toml`, `__init__.py`, `CHANGELOG.md`, `action.yml`,
+  the example workflow and both READMEs all read `0.6.0`, so `citeguard
+  --version` printed 0.6.0 and the composite Action installed
+  `citeguard==0.6.0` on a v0.7.0 release.  `scripts/check_version.py` only
+  checked "does tag `v{py}` exist" (v0.6.0 did, so it printed OK) and never
+  detected the higher `v0.7.0` tag.  All version surfaces are bumped to 0.8.0
+  and the gate now enumerates `vX.Y.Z` tags and fails when any is strictly
+  greater than the declared version — the "tagged but not bumped" drift class
+  can no longer pass `make lint`.  The consumer-facing-pin staleness regex is
+  also widened from `v0\.[0-9]\.\d+` (single-digit minor, a no-op at v0.10.0+)
+  to `v\d+\.\d+\.\d+`.
+- **A hard usage / IO error (exit code 2) no longer turns the GitHub check
+  green** (`fix-action-swallows-exit-code-2`).  `action.yml` ran the CLI as
+  `citeguard ... || echo "exit code: $?"`, swallowing every non-zero exit, and
+  the Enforce step only read `steps.run.outputs.failed`; `_run_ci` returns
+  `EXIT_USAGE` (2) for an unreadable `--changed-only` file / missing input path
+  WITHOUT writing `failed`, so a usage/IO error silently passed — violating the
+  §2b contract that exit 2 always fails.  The Run step now captures the exit
+  code and the Enforce step fails on exit 2, while the intentional exit-1
+  threshold swallow (so the sticky comment + summary still post) is preserved.
+- **The SQLite registry cache now fails soft** (`fix-cache-unhandled-sqlite-error`).
+  `cache.get` / `cache.put` had no try/except; under the `asyncio.gather`
+  fan-out (concurrency=8) a SQLite error (lock contention / corrupt DB /
+  permissions) propagated out of `_verify_one`, cancelled every other task, and
+  lost the whole citation batch — breaking the degrade-not-crash invariant every
+  resolver already follows.  Cache errors now degrade to skip (get → None,
+  put → no-op) so the citation is still verified live.
+- **HTTP User-Agent derives from `__version__`** (`fix-stale-useragent-version-strings`).
+  The Crossref and GitHub resolvers hardcoded `citeguard/0.1` in their
+  User-Agent, frozen since v0.1 — the same single-source-of-truth violation
+  v0.6.0 fixed for the JSON sidecar `generator`.  Both now send
+  `citeguard/{__version__}` (Crossref keeps the contact URL for the polite pool).
+
+### Added
+- **GitHub inline annotations are now line-precise**
+  (`feature-line-precise-annotations`).  Annotations previously emitted only
+  `file=` so a reviewer saw which file had a fabricated citation but not which
+  line.  `ContextSpan` now carries a 1-based `line` populated at extraction
+  time, and `render_annotations` emits `line=` when present (omitting it when
+  absent, preserving v0.7 behaviour), so a red fabricated-citation annotation
+  anchors the reviewer to the exact source line.
+
 ## [0.6.0] — 2026-08-21
 
 Correctness + release-hygiene release.  Three fix milestones from the

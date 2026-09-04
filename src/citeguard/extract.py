@@ -103,8 +103,16 @@ def load_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
-def _span_for(file: str, match: re.Match[str]) -> ContextSpan:
-    return ContextSpan(file=file, start=match.start(), end=match.end())
+def _span_for(file: str, match: re.Match[str], text: str) -> ContextSpan:
+    # 1-based line: count newlines strictly before the match start, then +1.
+    # text is the full document string available in extract_citations, so this
+    # is O(n) per match — fine for document-sized inputs.
+    return ContextSpan(
+        file=file,
+        start=match.start(),
+        end=match.end(),
+        line=text.count("\n", 0, match.start()) + 1,
+    )
 
 
 def _dedupe(citations: Iterable[Citation]) -> list[Citation]:
@@ -135,7 +143,7 @@ def extract_citations(text: str, source: str = "<stdin>") -> list[Citation]:
                 raw_text=m.group(0),
                 kind="doi",
                 identifier=identifier.lower(),
-                context_span=_span_for(source, m),
+                context_span=_span_for(source, m, text),
             )
         )
 
@@ -146,7 +154,7 @@ def extract_citations(text: str, source: str = "<stdin>") -> list[Citation]:
                 raw_text=m.group(0),
                 kind="arxiv",
                 identifier=m.group(1),
-                context_span=_span_for(source, m),
+                context_span=_span_for(source, m, text),
             )
         )
     for m in _ARXIV_NEW_URL_RE.finditer(text):
@@ -155,7 +163,7 @@ def extract_citations(text: str, source: str = "<stdin>") -> list[Citation]:
                 raw_text=m.group(0),
                 kind="arxiv",
                 identifier=m.group(1),
-                context_span=_span_for(source, m),
+                context_span=_span_for(source, m, text),
             )
         )
     for m in _ARXIV_OLD_RE.finditer(text):
@@ -164,7 +172,7 @@ def extract_citations(text: str, source: str = "<stdin>") -> list[Citation]:
                 raw_text=m.group(0),
                 kind="arxiv",
                 identifier=m.group(1),
-                context_span=_span_for(source, m),
+                context_span=_span_for(source, m, text),
             )
         )
 
@@ -174,7 +182,7 @@ def extract_citations(text: str, source: str = "<stdin>") -> list[Citation]:
                 raw_text=m.group(0),
                 kind="cve",
                 identifier=m.group(1).upper(),
-                context_span=_span_for(source, m),
+                context_span=_span_for(source, m, text),
             )
         )
 
@@ -184,7 +192,7 @@ def extract_citations(text: str, source: str = "<stdin>") -> list[Citation]:
                 raw_text=m.group(0),
                 kind="commit",
                 identifier=m.group(1).lower(),
-                context_span=_span_for(source, m),
+                context_span=_span_for(source, m, text),
             )
         )
 
@@ -195,7 +203,7 @@ def extract_citations(text: str, source: str = "<stdin>") -> list[Citation]:
                 raw_text=m.group(0),
                 kind="gh_issue",
                 identifier=f"{owner}/{repo}#{num}",
-                context_span=_span_for(source, m),
+                context_span=_span_for(source, m, text),
             )
         )
 

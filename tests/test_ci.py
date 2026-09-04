@@ -148,6 +148,51 @@ def test_render_annotations_includes_file_when_span_present():
     assert "file=paper.tex" in line
 
 
+# ---------- v0.8.0: feature-line-precise-annotations ---------------------
+#
+# Annotations previously emitted only `file=` (ci.py:134-136), so GitHub showed
+# a file-level marker with no line anchor.  ContextSpan now carries a 1-based
+# line populated at extraction time, and render_annotations emits `line=` when
+# present (omitting it when absent, preserving v0.7 behaviour).
+
+
+def test_render_annotations_include_line_when_span_has_line():
+    citation = Citation(
+        raw_text="arXiv:9999.00001",
+        kind="arxiv",
+        identifier="9999.00001",
+        context_span=ContextSpan(file="paper.tex", start=10, end=27, line=2),
+    )
+    result = VerifyResult(citation=citation, status="miss", registry="arxiv")
+    line = ci_mod.render_annotations([result])[0]
+    assert "file=paper.tex" in line
+    assert "line=2" in line
+
+
+def test_render_annotations_omit_line_when_span_has_none():
+    citation = Citation(
+        raw_text="arXiv:9999.00001",
+        kind="arxiv",
+        identifier="9999.00001",
+        context_span=ContextSpan(file="paper.tex", start=10, end=27),
+    )
+    result = VerifyResult(citation=citation, status="miss", registry="arxiv")
+    line = ci_mod.render_annotations([result])[0]
+    assert "file=paper.tex" in line
+    assert "line=" not in line
+
+
+def test_extract_populates_line_number():
+    # The arXiv ID is on the second line of a multi-line document.
+    from citeguard.extract import extract_citations
+
+    text = "line one has no citation\nsee arXiv:1706.03762 here\n"
+    citations = extract_citations(text, source="paper.md")
+    arxiv = [c for c in citations if c.kind == "arxiv"]
+    assert arxiv and arxiv[0].context_span is not None
+    assert arxiv[0].context_span.line == 2
+
+
 def test_render_annotations_escapes_newlines_and_percent():
     citation = Citation(raw_text="x", kind="cve", identifier="CVE-2099-1")
     result = VerifyResult(
@@ -339,7 +384,10 @@ def test_no_stale_citeguard_action_pin_in_consumer_facing_files():
     # Widen from the old [0-4] range so a stale v0.5+ pin is no longer
     # invisible. Each matched pin must equal the shipped version — a
     # one-release-behind pin fails the gate.
-    pin = re.compile(r"citeguard@v0\.[0-9]\.\d+")
+    # v0.8.0: widen from `v0\.[0-9]\.\d+` (single-digit minor, a no-op at
+    # v0.10.0+) to `v\d+\.\d+\.\d+` so the consumer-facing-pin guard survives
+    # multi-digit versions and still rejects any pin below the shipped version.
+    pin = re.compile(r"citeguard@v\d+\.\d+\.\d+")
     expected = f"citeguard@v{shipped}"
     for rel in ("action.yml", "examples/citeguard-action.yml", "README.md", "README.en.md"):
         body = (_REPO_ROOT / rel).read_text(encoding="utf-8")

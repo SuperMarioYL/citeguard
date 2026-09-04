@@ -481,3 +481,91 @@ def test_to_json_generator_tracks_package_version():
     )
     parsed = json.loads(payload)
     assert parsed["generator"] == f"citeguard/{__version__}"
+
+
+# ---------- v0.8.0: fix-stale-useragent-version-strings ------------------
+#
+# v0.6.0 made the JSON sidecar `generator` derive from `__version__`, but the
+# Crossref and GitHub resolvers still sent a hardcoded `citeguard/0.1`
+# User-Agent — frozen since v0.1, the same single-source-of-truth violation.
+# The UA now derives from `citeguard.__version__`.
+
+
+@pytest.mark.asyncio
+async def test_crossref_user_agent_tracks_package_version():
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("user-agent", ""))
+        return httpx.Response(200, json={"message": {}})
+
+    citation = Citation(raw_text="doi:10.1145/foo", kind="doi", identifier="10.1145/foo")
+    async with _mock_client(handler) as client:
+        await crossref_resolver.verify(client, citation)
+    assert seen, "no request was issued"
+    ua = seen[0]
+    assert ua.startswith("citeguard/"), f"UA should start with citeguard/: {ua!r}"
+    assert ua != "citeguard/0.1", "UA must not be the stale hardcoded citeguard/0.1"
+    assert __version__ in ua, f"UA should embed __version__: {ua!r}"
+
+
+@pytest.mark.asyncio
+async def test_github_user_agent_tracks_package_version():
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("user-agent", ""))
+        return httpx.Response(404)
+
+    citation = Citation(raw_text="curl/curl#999999", kind="gh_issue", identifier="curl/curl#999999")
+    async with _mock_client(handler) as client:
+        await github_resolver.verify(client, citation)
+    assert seen, "no request was issued"
+    ua = seen[0]
+    assert ua.startswith("citeguard/"), f"UA should start with citeguard/: {ua!r}"
+    assert ua != "citeguard/0.1", "UA must not be the stale hardcoded citeguard/0.1"
+    assert __version__ in ua, f"UA should embed __version__: {ua!r}"
+
+
+# ---------- v0.8.0: fix-cache-unhandled-sqlite-error ----------------------
+#
+# Every resolver wraps its network call in try/except -> degraded, so a registry
+# hiccup never crashes the run.  The SQLite cache broke that invariant: a
+# corrupt DB / lock contention raised sqlite3.Error out of cache.get/put and
+# cancelled the whole asyncio.gather batch.  The cache now degrades to skip
+# (get -> None, put -> no-op) on sqlite3.Error, matching the network layer.
+
+
+def test_cache_get_put_fail_soft_on_corrupt_db(tmp_path):
+    db = tmp_path / "corrupt.db"
+    db.write_bytes(b"not a database")  # SQLITE_NOTADB -> sqlite3.DatabaseError
+    cache = RegistryCache(path=db)
+    citation = Citation(raw_text="x", kind="arxiv", identifier="9999.00001")
+    result = VerifyResult(citation=citation, status="hit", registry="arxiv", evidence_url="u")
+
+    # Neither call raises despite the corrupt DB.
+    assert cache.get("arxiv", "9999.00001") is None
+    cache.put(result)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_verify_one_survives_cache_failure(tmp_path):
+    db = tmp_path / "corrupt.db"
+    db.write_bytes(b"not a database")
+    cache = RegistryCache(path=db)
+    citation = Citation(raw_text="arXiv:1706.03762", kind="arxiv", identifier="1706.03762")
+
+    feed = (
+        '<?xml version="1.0"?>\n<feed xmlns="http://www.w3.org/2005/Atom">'
+        "<entry><summary>Real abstract</summary></entry>"
+        "</feed>"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=feed)
+
+    async with _mock_client(handler) as client:
+        out = await _verify_one(client, cache, citation)
+    # The corrupt cache must not abort the verify; the citation is still resolved.
+    assert out is not None
+    assert out.status == "hit"

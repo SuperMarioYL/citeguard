@@ -19,6 +19,11 @@ class ContextSpan(BaseModel):
     file: str
     start: int
     end: int
+    # 1-based line number, populated at extraction time so GitHub workflow-command
+    # annotations can anchor inline annotations to the exact line (not just the
+    # file).  Optional so callers that construct spans without source text (tests,
+    # fixtures) keep working and annotations gracefully omit `line=` when absent.
+    line: int | None = None
 
 
 class Citation(BaseModel):

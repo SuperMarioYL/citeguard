@@ -19,6 +19,7 @@ Covers `fix-action-version-pin-stale-again` (v0.7.0):
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -120,3 +121,54 @@ def test_check_version_detects_action_yml_drift(tmp_path):
     # Green tree: align action.yml → gate passes.
     action_yml.write_text('inputs:\n  version:\n    default: "0.6.0"\n', encoding="utf-8")
     assert cv.main() == 0, "aligned versions must pass the version gate"
+
+
+def test_check_version_detects_release_tag_above_declared(tmp_path):
+    """check_version.py must fail when a git tag strictly greater than the
+    declared version exists — the "tagged but not bumped" drift class (v0.8.0).
+
+    v0.7.0 shipped with every version string frozen at 0.6.0 because the gate
+    only asked "does tag v{py} exist" (v0.6.0 did, so it printed OK) and never
+    noticed the higher v0.7.0 tag.  The gate now enumerates vX.Y.Z tags and fails
+    when any is above the declared version.
+    """
+    cv = _load_check_version()
+
+    # Seed a real temp git repo carrying a tag above the declared version.
+    subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "test"], cwd=tmp_path, capture_output=True, check=True
+    )
+    (tmp_path / "marker").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(["git", "tag", "v0.7.0"], cwd=tmp_path, capture_output=True, check=True)
+
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text('[project]\nversion = "0.6.0"\n', encoding="utf-8")
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text("# Changelog\n\n## [0.6.0] — 2026-08-21\n\nbody\n", encoding="utf-8")
+    init_py = tmp_path / "src" / "citeguard" / "__init__.py"
+    init_py.parent.mkdir(parents=True)
+    init_py.write_text('__version__ = "0.6.0"\n', encoding="utf-8")
+    action_yml = tmp_path / "action.yml"
+    action_yml.write_text('inputs:\n  version:\n    default: "0.6.0"\n', encoding="utf-8")
+
+    cv._PYPROJECT = pyproject
+    cv._CHANGELOG = changelog
+    cv._INIT = init_py
+    cv._ACTION = action_yml
+    cv._ROOT = tmp_path
+
+    assert cv.main() == 1, "a release tag above the declared version must fail the gate"
+
+    # Green tree: the highest tag equals the declared version -> passes.
+    subprocess.run(["git", "tag", "-d", "v0.7.0"], cwd=tmp_path, capture_output=True, check=True)
+    subprocess.run(["git", "tag", "v0.6.0"], cwd=tmp_path, capture_output=True, check=True)
+    assert cv.main() == 0, "aligned versions with no higher tag must pass the gate"

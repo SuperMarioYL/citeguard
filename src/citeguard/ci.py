@@ -134,6 +134,11 @@ def render_annotations(results: Iterable[VerifyResult]) -> list[str]:
         loc_parts: list[str] = []
         if span is not None:
             loc_parts.append(f"file={span.file}")
+            if span.line is not None:
+                # GitHub workflow-command `line=` anchors the inline annotation to
+                # the exact source line so a reviewer jumps straight to the
+                # citation instead of just the file.
+                loc_parts.append(f"line={span.line}")
         msg = _annotation_message(r)
         loc = ",".join(loc_parts)
         prefix = f"::{level} {loc}::" if loc else f"::{level}::"

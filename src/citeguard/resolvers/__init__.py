@@ -61,11 +61,20 @@ class RegistryCache:
 
     def get(self, kind: str, identifier: str) -> VerifyResult | None:
         cutoff = int(time.time()) - self.ttl_seconds
-        with _conn(self.path) as conn:
-            row = conn.execute(
-                "SELECT payload, cached_at FROM verify_cache WHERE kind=? AND identifier=?",
-                (kind, identifier),
-            ).fetchone()
+        # The cache is an optimisation, not an authority — a SQLite error (lock
+        # contention under the asyncio fan-out, a corrupt DB, a permissions hiccup)
+        # must degrade to "cache miss -> live lookup" rather than propagate out of
+        # _verify_one and cancel the whole asyncio.gather batch.  Every resolver
+        # already follows this degrade-not-crash pattern for network hiccups; the
+        # cache layer matches it here.
+        try:
+            with _conn(self.path) as conn:
+                row = conn.execute(
+                    "SELECT payload, cached_at FROM verify_cache WHERE kind=? AND identifier=?",
+                    (kind, identifier),
+                ).fetchone()
+        except sqlite3.Error:
+            return None
         if not row:
             return None
         payload, cached_at = row
@@ -79,17 +88,24 @@ class RegistryCache:
         # for a week.
         if result.status == "degraded":
             return
-        with _conn(self.path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO verify_cache(kind, identifier, payload, cached_at)"
-                " VALUES (?, ?, ?, ?)",
-                (
-                    result.citation.kind,
-                    result.citation.identifier,
-                    result.model_dump_json(),
-                    int(time.time()),
-                ),
-            )
+        # See `get`: a cache write failure must not abort the verify batch.  If
+        # the row cannot be stored (locked / disk-full / permissions), drop it
+        # silently — the citation was still verified live and will be re-queried
+        # on the next run that misses the cache.
+        try:
+            with _conn(self.path) as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO verify_cache(kind, identifier, payload, cached_at)"
+                    " VALUES (?, ?, ?, ?)",
+                    (
+                        result.citation.kind,
+                        result.citation.identifier,
+                        result.model_dump_json(),
+                        int(time.time()),
+                    ),
+                )
+        except sqlite3.Error:
+            return
 
     def clear(self) -> None:
         with _conn(self.path) as conn:

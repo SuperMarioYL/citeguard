@@ -12,6 +12,7 @@ import os
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from citeguard import __version__
 from citeguard.models import Citation, VerifyResult
 
 _BASE = "https://api.github.com"
@@ -23,7 +24,7 @@ def _headers() -> dict[str, str]:
     h = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "citeguard/0.1",
+        "User-Agent": f"citeguard/{__version__}",
     }
     token = os.environ.get("GITHUB_TOKEN")
     if token:

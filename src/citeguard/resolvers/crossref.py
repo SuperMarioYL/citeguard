@@ -13,6 +13,7 @@ from urllib.parse import quote
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from citeguard import __version__
 from citeguard.models import Citation, VerifyResult
 
 _BASE = "https://api.crossref.org"
@@ -30,7 +31,9 @@ async def _get(client: httpx.AsyncClient, url: str) -> httpx.Response:
     r = await client.get(
         url,
         timeout=_TIMEOUT_SEC,
-        headers={"User-Agent": "citeguard/0.1 (https://github.com/SuperMarioYL/citeguard)"},
+        headers={
+            "User-Agent": f"citeguard/{__version__} (https://github.com/SuperMarioYL/citeguard)"
+        },
     )
     if 500 <= r.status_code < 600:
         r.raise_for_status()

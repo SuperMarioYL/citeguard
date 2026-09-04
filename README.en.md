@@ -162,7 +162,7 @@ The JSON sidecar has a stable schema downstream tools can consume:
 
 ```json
 {
-  "generator": "citeguard/0.6.0",
+  "generator": "citeguard/0.8.0",
   "results": [
     {
       "citation": {"raw_text": "arXiv:1706.03762", "kind": "arxiv", "identifier": "1706.03762"},
@@ -215,7 +215,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: SuperMarioYL/citeguard@v0.6.0
+      - uses: SuperMarioYL/citeguard@v0.8.0
         with:
           fail-on: miss        # journals: keep `miss`; OSS: start with `none`
           max-misses: 0

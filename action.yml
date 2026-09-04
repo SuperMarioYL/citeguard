@@ -13,7 +13,7 @@ inputs:
   version:
     description: "Pinned citeguard version to install from PyPI (use 'latest' to skip the pin)."
     required: false
-    default: "0.6.0"
+    default: "0.8.0"
   fail-on:
     description: "Which outcome trips a failing check: none | miss | degraded."
     required: false
@@ -91,7 +91,14 @@ runs:
       id: run
       shell: bash
       run: |
-        set -euo pipefail
+        set -uo pipefail
+        # Run citeguard WITHOUT `set -e` and WITHOUT `|| echo` so a non-zero exit
+        # (1 = threshold exceedance, 2 = usage / IO error) does not abort the step
+        # before we capture it.  The threshold path still writes
+        # hit/miss/degraded/failed to $GITHUB_OUTPUT; the captured exit_code lets
+        # the Enforce step treat a hard exit-2 (which §2b says "always fails") as
+        # a check failure instead of a silent green (pre-fix `|| echo` swallowed
+        # exit 2 and `failed` was never written, so a usage/IO error passed).
         citeguard \
           --changed-only "${{ steps.diff.outputs.list }}" \
           --fail-on "${{ inputs.fail-on }}" \
@@ -99,8 +106,11 @@ runs:
           --paths "${{ inputs.paths }}" \
           --summary-out "${GITHUB_STEP_SUMMARY}" \
           --annotations \
-          || echo "citeguard exit code: $?"
-        # citeguard already wrote hit/miss/degraded/failed to $GITHUB_OUTPUT.
+          ; CG_EXIT=$?
+        echo "exit_code=$CG_EXIT" >> "$GITHUB_OUTPUT"
+        echo "citeguard exit code: $CG_EXIT"
+        # citeguard already wrote hit/miss/degraded/failed to $GITHUB_OUTPUT above
+        # (only on the threshold path — a usage/IO error exits before writing it).
 
     - name: Upsert sticky PR comment
       if: ${{ inputs.comment == 'true' && github.event_name == 'pull_request' }}
@@ -136,5 +146,14 @@ runs:
       run: |
         if [ "${{ steps.run.outputs.failed }}" = "true" ]; then
           echo "::error::CiteGuard threshold exceeded (fail-on=${{ inputs.fail-on }}, max-misses=${{ inputs.max-misses }})"
+          exit 1
+        fi
+        # §2b: exit code 2 = usage / IO error (bad args, unreadable --changed-only
+        # file, missing input path) and must ALWAYS fail the check, regardless of
+        # fail-on.  Pre-fix the Run step swallowed it via `|| echo` and `failed`
+        # was never written, so a hard config / IO error silently passed (false
+        # green) on the one exit code the contract guarantees fails.
+        if [ "${{ steps.run.outputs.exit_code }}" = "2" ]; then
+          echo "::error::CiteGuard usage / IO error (exit code 2); see the Run citeguard step log"
           exit 1
         fi
