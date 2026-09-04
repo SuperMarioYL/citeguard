@@ -3,6 +3,11 @@
   "name": "citeguard",
   "github": "https://github.com/SuperMarioYL/citeguard",
   "host": "citeguard.lei6393.com",
+  "meta": {
+    "content_version": "v0.8.0",
+    "updated": "2026-09-05",
+    "release": "https://github.com/SuperMarioYL/citeguard/releases/tag/v0.8.0"
+  },
   "lang": { "primary": "zh", "toggle": true },
   "accent": ["#3fb950"],
   "hero": {
@@ -50,7 +55,8 @@
       "chips": [
         "› sticky PR 评论",
         "› 按阈值挂掉",
-        "› 只核验改动文件"
+        "› 只核验改动文件",
+        "› 行级 inline annotation"
       ]
     },
     {
@@ -65,7 +71,7 @@
       "chips": [
         "› 5 类标识符",
         "› 5 个 registry",
-        "› 7 天缓存"
+        "› 7 天 fail-soft 缓存"
       ]
     },
     {
