@@ -103,6 +103,10 @@
           "alt": {
             "zh": "离线示例的 5 个唯一标识符及行号。",
             "en": "Five unique identifiers and line numbers from the offline example."
+          },
+          "mobile": {
+            "light": "/assets/process-mobile-light.svg",
+            "dark": "/assets/process-mobile-dark.svg"
           }
         }
       },
@@ -121,6 +125,10 @@
           "alt": {
             "zh": "抽取、registry resolver、缓存与报告的数据路径。",
             "en": "Data paths through extraction, registry resolvers, cache and reports."
+          },
+          "mobile": {
+            "light": "/assets/architecture-mobile-light.svg",
+            "dark": "/assets/architecture-mobile-dark.svg"
           }
         }
       },
@@ -139,6 +147,10 @@
           "alt": {
             "zh": "标识符类型、registry 路由与输出接入。",
             "en": "Identifier types, registry routes and output integrations."
+          },
+          "mobile": {
+            "light": "/assets/integrations-mobile-light.svg",
+            "dark": "/assets/integrations-mobile-dark.svg"
           }
         }
       }
