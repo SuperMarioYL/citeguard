@@ -1,0 +1,20 @@
+$ citeguard examples/identifiers.md extract examples/identifiers.md
+[
+  {"raw_text":"DOI: 10.1145/3460120.","kind":"doi","identifier":"10.1145/3460120","context_span":{"file":"examples/identifiers.md","start":14,"end":35,"line":2}},
+  {"raw_text":"arXiv:1706.03762v2","kind":"arxiv","identifier":"1706.03762","context_span":{"file":"examples/identifiers.md","start":36,"end":54,"line":3}},
+  {"raw_text":"CVE-2024-3094","kind":"cve","identifier":"CVE-2024-3094","context_span":{"file":"examples/identifiers.md","start":55,"end":68,"line":4}},
+  {"raw_text":"commit 0123456789abcdef0123456789abcdef01234567","kind":"commit","identifier":"0123456789abcdef0123456789abcdef01234567","context_span":{"file":"examples/identifiers.md","start":69,"end":116,"line":5}},
+  {"raw_text":"https://github.com/example/project/issues/42","kind":"gh_issue","identifier":"example/project#42","context_span":{"file":"examples/identifiers.md","start":117,"end":161,"line":6}}
+]
+
+$ citeguard examples/normalized.tex extract examples/normalized.tex
+[
+  {"raw_text":"DOI: 10.1000/EXAMPLE.","kind":"doi","identifier":"10.1000/example","context_span":{"file":"examples/normalized.tex","start":31,"end":52,"line":2}},
+  {"raw_text":"arXiv:1706.03762v2","kind":"arxiv","identifier":"1706.03762","context_span":{"file":"examples/normalized.tex","start":129,"end":147,"line":5}}
+]
+
+$ citeguard examples/boundaries.txt extract examples/boundaries.txt
+[
+  {"raw_text":"https://doi.org/10.1145/3460120","kind":"doi","identifier":"10.1145/3460120","context_span":{"file":"examples/boundaries.txt","start":14,"end":45,"line":1}},
+  {"raw_text":"https://github.com/example/project/issues/42","kind":"gh_issue","identifier":"example/project#42","context_span":{"file":"examples/boundaries.txt","start":116,"end":160,"line":3}}
+]

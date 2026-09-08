@@ -1,0 +1,3 @@
+DOI fragment: https://doi.org/10.1145/3460120#2
+Bare digest: 0123456789abcdef0123456789abcdef01234567
+Linked issue: https://github.com/example/project/issues/42

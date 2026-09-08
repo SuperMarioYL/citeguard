@@ -1,306 +1,181 @@
-<p align="right"><strong>English</strong> | <a href="./README.md">简体中文</a></p>
+**English** | [简体中文](README.md)
 
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=2,6,12&height=160&section=header&text=CiteGuard&fontSize=58&fontColor=ffffff&fontAlignY=42&desc=Paste%20a%20paper.%20Get%20a%20red%2Fgreen%20bibliography%20verdict%20in%2010s.&descSize=14&descAlignY=70" alt="CiteGuard banner" />
-</p>
+<picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/hero-mobile-dark.svg">
+  <source media="(max-width: 640px)" srcset="assets/hero-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.svg">
+  <img src="assets/hero-light.svg" width="920" alt="CiteGuard citation shield and converging particles: check references, keep the evidence.">
+</picture>
 
-<p align="center">
-  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" /></a>
-  <a href="https://pypi.org/project/citeguard/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/citeguard.svg?label=pypi" /></a>
-  <a href="https://github.com/SuperMarioYL/citeguard/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/SuperMarioYL/citeguard/ci.yml?label=CI" /></a>
-  <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white" />
-  <img alt="Status" src="https://img.shields.io/badge/status-alpha-orange.svg" />
-</p>
+**CiteGuard extracts identifiers from papers and issue reports, queries the relevant registries, and keeps each result with its evidence link and source location.**
 
-<p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=18&pause=1000&color=2EA043&center=true&vCenter=true&width=620&lines=DOI+%E2%80%A2+arXiv+%E2%80%A2+CVE+%E2%80%A2+Commit+SHA+%E2%80%A2+GitHub+Issue;Batch-resolved+against+real+registries;One+command.+No+LLM.+No+server." alt="Animated tagline" />
-</p>
+`v0.8.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
 
-> **CiteGuard is a CLI that batch-verifies every citation, DOI, arXiv ID, CVE, and commit SHA in a paper or bug report against real registries (OpenAlex / Crossref / arXiv / NVD / GitHub) — in 10 seconds.**
+[Use cases](#use-cases) · [Architecture](#architecture) · [Install](#install) · [Offline quickstart](#offline-quickstart) · [Verification](#network-verification-and-output) · [CI](#ci-integration) · [Configuration](#configuration) · [Scope](#current-scope-and-next-directions)
 
----
+## Use cases
 
-## Table of Contents
+When you encounter a DOI, arXiv ID or CVE, the useful questions include what the registry returns and where the identifier appears in the source. CiteGuard turns that check into a batchable command-line workflow with a saved record, for authors, reviewers and maintainers handling issue reports.
 
-- [Who it's for](#who-its-for)
-- [Why now](#why-now)
-- [Install](#install)
-- [30-second quickstart](#30-second-quickstart)
-- [Demo](#demo)
-- [How it works](#how-it-works)
-- [Configuration](#configuration)
-- [Output format](#output-format)
-- [Out of scope (v0.1)](#out-of-scope-v01)
-- [Roadmap](#roadmap)
-- [GitHub Action (new in v0.2)](#github-action-new-in-v02)
-- [Development](#development)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+A verification result indicates whether the queried registry found the identifier. It does not establish whether a paper supports a claim, and a single `miss` does not prove that an author fabricated a reference. Formatting, context and registry availability can all warrant further inspection.
 
----
+## Architecture
 
-## Who it's for
+<picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/architecture-mobile-dark.svg">
+  <source media="(max-width: 640px)" srcset="assets/architecture-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture-dark.svg">
+  <img src="assets/architecture-light.svg" width="920" alt="Offline extraction creates Citation objects; network resolvers query registries; caching and reports retain results and source context.">
+</picture>
 
-| You are | Your pain | What CiteGuard does for you |
-| :--- | :--- | :--- |
-| **Journal / conference reviewer** | A 30-reference submission costs 15–20 min of manual DOI lookups; volume × 3 breaks the system | Paste the PDF/.tex → red rows pinpoint fabricated citations |
-| **arXiv moderator** | The official policy already lists "unverified LLM errors" as a ban trigger, but the tooling slot is empty | Pre-process the desk-reject queue in five minutes |
-| **OSS security maintainer** | Linus calls the Linux security list "near-unmanageable" — bug reports cite CVEs / commits that *look* real but don't exist | Pipe `bug_report.md` in, red-flag every fabricated identifier |
-| **Thesis / dissertation advisor** | Student work co-drafted by an LLM hides hallucinated references; per-paper hand-checking is unrealistic | Pre-submission self-check; any red row must be fixed |
+The [extractor](src/citeguard/extract.py) reads text-layer PDFs, TeX, Markdown and plain text. Deterministic patterns recognize DOIs, arXiv IDs, CVEs, anchored commit SHAs and GitHub issue/PR references. A `Citation` retains the raw match, normalized identifier, file, character span and line number.
 
-## Why now
+The [CLI orchestrator](src/citeguard/cli.py) routes identifiers to their resolvers with at most eight concurrent checks. DOI lookup starts with OpenAlex and falls back to Crossref only on `miss`. If Crossref is unreachable, the result stays `degraded` rather than caching an unconfirmed absence.
 
-Three unlocks aligned in the last 12 months — none of them existed in 2024:
-
-1. **Demand crossed the threshold.** arXiv's 2026-05 policy makes "fabricated citations" a one-year ban trigger ([640 upvotes / 69 comments](https://www.reddit.com/r/MachineLearning/)); Linus called the LKML security list "near-unmanageable." Two independent constituencies converging on the same root.
-2. **Registry APIs became real-time.** OpenAlex (fully open since 2024), NVD JSON 2.0, the arXiv API, Crossref REST, GitHub REST — for the first time their latency × quota envelope is good enough for an interactive CLI. OpenAlex *did not exist* two years ago.
-3. **Extraction got cheap.** Pulling structured references from PDF / .tex used to need a GROBID-grade engineering team; today ≤ 200 lines of deterministic regex covers 90 % recall. CiteGuard v0.1 deliberately uses **no LLM** — precision over recall.
-
-> Remove any one of the three and CiteGuard could not have existed two years ago — that's why it shows up now.
-
-## <img src="https://api.iconify.design/tabler:topology-star-3.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Architecture
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/atlas-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/atlas-light.svg">
-    <img src="./assets/atlas-light.svg" width="880" alt="Architecture: input documents enter a no-LLM extraction layer, then fan out across five registry resolvers (OpenAlex / Crossref / arXiv / NVD / GitHub) backed by a 7-day SQLite cache, and converge on a red/green report layer that emits a terminal table plus a JSON sidecar">
-  </picture>
-</p>
-
-A deterministic, LLM-free pipeline. Documents first pass through the **extraction layer** (`pypdf` + five identifier-class regexes) that pulls out DOIs, arXiv IDs, CVEs, commit SHAs, and `owner/repo#issue` references. The **resolver fan-out** then hits five authoritative registries concurrently via `asyncio.gather`, reusing a single `httpx` client with `tenacity` backoff. A 7-day-TTL **SQLite cache** under `~/.cache/citeguard` shields the registries — `degraded` outcomes are deliberately not cached so one transient failure never freezes a result for a week — before the **report layer** renders the `rich` red/green table and drops a stable-schema JSON sidecar for downstream tooling.
+The [SQLite cache](src/citeguard/resolvers/__init__.py) uses a seven-day TTL and does not store degraded results. SQLite read/write errors leave the lookup path available. The [report layer](src/citeguard/report.py) renders network `VerifyResult` objects as a terminal table, JSON and optional Markdown.
 
 ## Install
 
-```bash
-pipx install citeguard
-```
-
-or `pip install citeguard`.  Python ≥ 3.11.  No GPU, no daemon, no LLM call.
-Tested on Linux and macOS.
-
-## 30-second quickstart
-
-```bash
-citeguard paper.pdf
-```
-
-Within 10 seconds you get a terminal red/green table:
-
-- ✓ **green check** — the identifier exists in an authoritative registry (with evidence URL)
-- ✗ **red cross** — the identifier was not found, plus up to 3 nearest-match candidates with edit distance
-- ? **yellow question** — timeout / rate-limit / transient failure
-
-A `paper.pdf.citeguard.json` sidecar drops alongside the input, ready for downstream tooling.
-
-<details>
-<summary>Sample terminal output</summary>
-
-```
-  ┌──┬──────────┬───────────────────────────────┬──────────┬────────────────────────────────────┐
-  │  │ Kind     │ Identifier                    │ Registry │ Evidence / nearest match           │
-  ├──┼──────────┼───────────────────────────────┼──────────┼────────────────────────────────────┤
-  │✓ │ arxiv    │ 1706.03762                    │ arxiv    │ https://arxiv.org/abs/1706.03762   │
-  │✗ │ arxiv    │ 9999.00001                    │ arxiv    │                                    │
-  │✗ │ doi      │ 10.9999/not-a-real-doi-12345  │ openalex │ ≈ Probably-similar paper (d=23)    │
-  │? │ cve      │ CVE-2024-77777                │ nvd      │ rate-limit; retry with backoff     │
-  └──┴──────────┴───────────────────────────────┴──────────┴────────────────────────────────────┘
-  1 hit · 2 miss · 1 degraded
-```
-
-</details>
-
-## <img src="https://api.iconify.design/tabler:photo.svg?color=%230071E3&width=24" height="22" align="absmiddle" alt=""> Demo
-
-> A withdrawn arXiv paper → red rows pin the fabricated refs → a clean paper goes all-green → the JSON sidecar appears.
-
-![CiteGuard demo](assets/demo.gif)
-
-> 📼 `docs/demo.tape` is a [VHS](https://github.com/charmbracelet/vhs) script; CI re-records `assets/demo.gif` automatically, or run `vhs docs/demo.tape` locally.
-
-## How it works
-
-```
-+----------+    +---------+    +------------------+    +----------+
-|  Input   | -> | Extract | -> |  Resolver fanout | -> |  Report  |
-| pdf/tex  |    | regex + |    |  5 resolvers     |    | rich /   |
-| md/text  |    | pypdf   |    |  httpx + retry   |    | json/md  |
-+----------+    +---------+    +--------+---------+    +----------+
-                                        |
-                                  +-----v------+
-                                  | sqlite     |
-                                  | cache 7d   |
-                                  +------------+
-```
-
-1. **Extraction** uses `pypdf` for the PDF text layer + five identifier-class regexes.  No LLM, ever — precision over recall is the v0.1 contract.
-2. **Resolver fan-out** runs the five resolvers through `asyncio.gather` with bounded concurrency, retried with `tenacity` exponential backoff on transport / 5xx, and a single shared `httpx.AsyncClient`.
-3. **SQLite cache** at `~/.cache/citeguard/registry.db`, TTL = 7 days.  `degraded` outcomes are deliberately **not** cached so a single transient failure never freezes a result for a week.
-4. **Report layer** renders the rich red/green table; the JSON sidecar drops by default; optional `--md` writes Markdown.
-
-## Configuration
-
-CiteGuard is intentionally configuration-free in v0.1 — everything lives on
-the command line.
-
-| Option | Type | Default | Meaning |
-| :--- | :--- | :--- | :--- |
-| `--json PATH` | path | `<input>.citeguard.json` | Where to write the JSON sidecar |
-| `--md PATH` | path | *unset* | Also write a Markdown report |
-| `--no-cache` | flag | `false` | Skip the SQLite cache (hit real registries every time) |
-| `--strict` | flag | `false` | Exit 1 on any miss — superseded by `--fail-on` in v0.2, kept for back-compat |
-| `--changed-only PATH` | path | *unset* | **v0.2 CI mode**: read newline-separated changed-file list from PATH and verify each |
-| `--fail-on {none,miss,degraded}` | enum | `none` | **v0.2 CI mode**: which outcome counts as a failure |
-| `--max-misses N` | int | `0` | **v0.2 CI mode**: tolerate up to N misses before `--fail-on` triggers |
-| `--paths "<glob>,<glob>"` | string | `**/*.pdf,**/*.tex,**/*.md` | **v0.2 CI mode**: comma-separated glob filter applied to changed files |
-| `--summary-out PATH` | path | *unset* | **v0.2 CI mode**: append the Markdown job summary to PATH (typically `$GITHUB_STEP_SUMMARY`) |
-| `GITHUB_TOKEN` | env | *unset* | Raises the GitHub resolver from 60/hour to 5000/hour |
-
-## Output format
-
-The JSON sidecar has a stable schema downstream tools can consume:
-
-```json
-{
-  "generator": "citeguard/0.8.0",
-  "results": [
-    {
-      "citation": {"raw_text": "arXiv:1706.03762", "kind": "arxiv", "identifier": "1706.03762"},
-      "status": "hit",
-      "registry": "arxiv",
-      "evidence_url": "https://arxiv.org/abs/1706.03762",
-      "nearest_matches": []
-    }
-  ]
-}
-```
-
-## Out of scope (v0.1)
-
-Deliberately not done — each with a specific reason:
-
-- Web UI / hosted SaaS — v0.1 is CLI only
-- Multi-user / auth / team dashboards
-- **LLM-based extraction** — only deterministic regex in v0.1; precision over recall
-- Auto-reviewing / citation sentiment / writing suggestions (CiteGuard answers existence only)
-- PDF OCR (text-layer PDFs / .tex / .md / plain text only)
-- Self-trained models or anything requiring a GPU
-
-> Since v0.2 the **GitHub Action wrapper** is no longer out of scope — see [GitHub Action (new in v0.2)](#github-action-new-in-v02). GitLab CI, SARIF output, and auto-fixing fabricated citations remain out of scope for v0.2.
-
-## GitHub Action (new in v0.2)
-
-Put CiteGuard in CI — every PR gets its citations verified, and the verdict
-appears as a sticky red/green comment.
-
-Drop this into `.github/workflows/citeguard.yml` (or copy
-[`examples/citeguard-action.yml`](./examples/citeguard-action.yml)):
-
-```yaml
-name: CiteGuard
-
-on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths: ["**/*.pdf", "**/*.tex", "**/*.md"]
-
-permissions:
-  contents: read
-  pull-requests: write   # required for the sticky comment + inline annotations
-
-jobs:
-  citeguard:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - uses: SuperMarioYL/citeguard@v0.8.0
-        with:
-          fail-on: miss        # journals: keep `miss`; OSS: start with `none`
-          max-misses: 0
-          paths: "**/*.pdf,**/*.tex,**/*.md"
-          comment: "true"
-```
-
-On every PR that touches `.pdf` / `.tex` / `.md`, the Action will:
-
-1. **Upsert a sticky PR comment.** One auto-updating comment per PR, marked
-   with `<!-- citeguard:sticky -->` so subsequent runs edit in place rather
-   than spamming the thread.
-2. **Write a job summary.** The same red/green table is appended to
-   `$GITHUB_STEP_SUMMARY`, visible from the Actions run page even if you turn
-   the comment off.
-3. **Emit inline annotations.** Each miss becomes an `::error file=…::` line
-   so GitHub renders a red annotation on the PR's *Files changed* tab.
-   Degraded results render as `::warning`.
-
-### Exit-code contract (CLI side, v0.2 §2b)
-
-The CLI exit codes that the Action depends on are a stable v0.2 contract:
-
-| Exit | Meaning | CI effect |
-| :---: | :--- | :--- |
-| `0` | All citations within `--fail-on` + `--max-misses` thresholds | check passes |
-| `1` | `miss` / `degraded` count exceeded threshold | check fails when `fail-on != none` |
-| `2` | Usage / IO error (bad flag, unreadable file) | check always fails |
-
-Full inputs / outputs / permissions reference: [`docs/github-action.md`](./docs/github-action.md).
-
-### Picking a threshold
-
-| Audience | Recommended | Why |
-| :--- | :--- | :--- |
-| Journals, conference review | `fail-on: miss`, `max-misses: 0` | Block any PR carrying a fabricated reference. |
-| OSS docs, advisory rollout | `fail-on: none` | Sticky comment only; never blocks a PR. Use this for the first 1–2 weeks. |
-| Critical security advisories | `fail-on: degraded`, `max-misses: 0` | Anything the registries can't confirm fails the check, including transient timeouts. |
-
-## Roadmap
-
-- [x] **m1 — Extraction**: DOI / arXiv / CVE / commit SHA / `owner/repo#issue` across PDF + LaTeX + Markdown + plain text
-- [x] **m2 — Resolver orchestration**: five concurrent registries with backoff + SQLite cache
-- [x] **m3 — Reporting**: red/green table + JSON / Markdown export + nearest-match candidates
-- [x] **m4 — CLI CI mode** (v0.2): `--changed-only` / `--fail-on` / `--max-misses` / `--paths` + exit-code contract + workflow-command annotations
-- [x] **m5 — GitHub Action** (v0.2): composite `action.yml` + PyPI trusted publishing + sticky PR comment
-- [ ] **m6 — GitLab CI component** (v0.3)
-- [ ] **m7 — Optional LLM extraction fallback** (off by default)
-- [ ] **m8 — Windows pipx binary**
-
-## Development
+Requires Python 3.11 or newer. Check `python3 --version`, then install from source:
 
 ```bash
 git clone https://github.com/SuperMarioYL/citeguard.git
 cd citeguard
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pytest -q                 # first run materialises tests/fixtures/sample_paper.pdf
-make lint                 # ruff check + ruff format --check (release gate as of v0.3)
-pre-commit install --hook-type pre-push   # wire the same lint into `git push`
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
 ```
 
-`make help` lists every target (`install-dev` / `lint` / `lint-fix` / `test`).
-The `.pre-commit-config.yaml` attaches ruff to the `pre-push` stage — local
-commits stay fast, but `git push` runs the same checks CI does so CI is never
-the first place a lint failure shows up. CI also runs a grep guard that pins
-every GitHub Action to the Node.js-24 majors (`checkout@v5` /
-`setup-python@v6`); any PR that regresses to a stale pin fails the build.
+Installing dependencies needs network access. Extraction calls neither models nor registries; full verification needs external registry access.
 
-Issues welcome — especially:
+## Offline quickstart
 
-- false positives (a red row that should be green)
-- false negatives (a fabricated reference we missed)
-- proposals for adding a new registry
+Create the complete input first. These illustrative identifiers are used to demonstrate extraction; their existence is not queried in this example:
+
+```bash
+mkdir -p examples
+cat > examples/identifiers.md <<'CITEGUARD_INPUT'
+Research note
+DOI: 10.1145/3460120.
+arXiv:1706.03762v2
+CVE-2024-3094
+commit 0123456789abcdef0123456789abcdef01234567
+https://github.com/example/project/issues/42
+Repeat: arXiv:1706.03762
+CITEGUARD_INPUT
+```
+
+Use this working v0.8.0 invocation:
+
+```bash
+citeguard examples/identifiers.md extract examples/identifiers.md
+```
+
+The v0.8.0 command group parses a top-level `PATH` before the subcommand, so the path appears both before and after `extract`. The shorter `citeguard extract examples/identifiers.md` is misparsed as an unknown subcommand. The invocation above reaches the existing extractor without changing source code.
+
+<picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/process-mobile-dark.svg">
+  <source media="(max-width: 640px)" srcset="assets/process-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/process-dark.svg">
+  <img src="assets/process-light.svg" width="920" alt="Seven input lines yield five unique identifiers with complete values and source line numbers, without registry queries.">
+</picture>
+
+The output contains five deduplicated `Citation` objects. arXiv version suffixes are removed and the repeated arXiv ID collapses to one object. Each object retains its matched line number. The actual standard output is:
+
+```json
+[
+  {"raw_text":"DOI: 10.1145/3460120.","kind":"doi","identifier":"10.1145/3460120","context_span":{"file":"examples/identifiers.md","start":14,"end":35,"line":2}},
+  {"raw_text":"arXiv:1706.03762v2","kind":"arxiv","identifier":"1706.03762","context_span":{"file":"examples/identifiers.md","start":36,"end":54,"line":3}},
+  {"raw_text":"CVE-2024-3094","kind":"cve","identifier":"CVE-2024-3094","context_span":{"file":"examples/identifiers.md","start":55,"end":68,"line":4}},
+  {"raw_text":"commit 0123456789abcdef0123456789abcdef01234567","kind":"commit","identifier":"0123456789abcdef0123456789abcdef01234567","context_span":{"file":"examples/identifiers.md","start":69,"end":116,"line":5}},
+  {"raw_text":"https://github.com/example/project/issues/42","kind":"gh_issue","identifier":"example/project#42","context_span":{"file":"examples/identifiers.md","start":117,"end":161,"line":6}}
+]
+```
+
+Two additional complete inputs cover normalization and matching boundaries:
+
+| Input | Actual invocation | Output from this run |
+|---|---|---|
+| [Normalization example](examples/normalized.tex) | `citeguard examples/normalized.tex extract examples/normalized.tex` | Two identifiers after DOI case and arXiv version normalization |
+| [Boundary example](examples/boundaries.txt) | `citeguard examples/boundaries.txt extract examples/boundaries.txt` | A DOI and a GitHub issue; the bare 40-character hash is not extracted as a commit |
+
+[Complete inputs, commands and output](docs/demo-results.json) · [Input creation and replay script](docs/demo.sh) · [Text transcript](docs/demo-output.txt)
+
+## Network verification and output
+
+With the input prepared, use the top-level command for full verification. Put options before the input path:
+
+```bash
+citeguard --json report.json --md report.md examples/identifiers.md
+```
+
+| Status | Meaning | What to inspect next |
+|---|---|---|
+| `hit` | The queried registry returned a record | `evidence_url` and the source context |
+| `miss` | The lookup path did not find a record | Identifier format, registry choice and any nearest candidates |
+| `degraded` | A timeout, rate limit, missing context or other problem prevented a verdict | The specific reason in `note` |
+
+The OpenAlex DOI miss path can include up to three nearest candidates as leads for review. An anchored bare commit can be extracted but still lacks the repository context required for verification; cite a complete GitHub commit URL in the source.
+
+By default, the full workflow writes `<input>.citeguard.json`. The document contains `generator` and `results`; each result includes `citation`, `status`, `registry`, optional `evidence_url`, `nearest_matches` and `note`. Offline `extract` only prints a Citation array to standard output and does not produce verification statuses.
+
+The existing [terminal recording](assets/demo.gif) and [VHS tape](docs/demo.tape) are retained for the network workflow. Registry results depend on external state at query time. The offline results in this section are defined by the recorded commands above.
+
+## Capabilities and integration
+
+<picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/integrations-mobile-dark.svg">
+  <source media="(max-width: 640px)" srcset="assets/integrations-mobile-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/integrations-dark.svg">
+  <img src="assets/integrations-light.svg" width="920" alt="Registry routes for five identifier types, document inputs, JSON and Markdown reports, and the GitHub Action.">
+</picture>
+
+| Content | Current route | Boundary |
+|---|---|---|
+| DOI | OpenAlex, then Crossref on miss | Checks registry records, not the quality of an argument |
+| arXiv | arXiv API | Extraction normalizes IDs by removing version suffixes |
+| CVE | NVD | Identifies and queries CVEs; it does not assess whether your system is affected |
+| GitHub commits and issues/PRs | GitHub REST | Commit verification needs repository context |
+| PDF, TeX, Markdown, plain text | Text loading and pattern extraction | PDFs need a text layer; free-form references without identifiers may not be extracted |
+| Automation | JSON, Markdown, GitHub Action | Downstream users choose thresholds and review policy |
+
+## CI integration
+
+The repository supplies a [GitHub composite Action](action.yml) with changed-file input, job summaries, sticky PR comments and source-line annotations. See the [Action reference](docs/github-action.md) and [workflow example](examples/citeguard-action.yml). You can prepare the same input locally:
+
+```bash
+printf '%s\n' examples/identifiers.md > changed.txt
+citeguard --changed-only changed.txt --fail-on miss --max-misses 0 --summary-out summary.md
+```
+
+`--fail-on none` reports only, `miss` counts missing results, and `degraded` counts both missing and inconclusive results. Failure occurs only above `--max-misses`. CI exit codes are `0` for a result within threshold, `1` for an exceeded threshold and `2` for usage or I/O errors.
+
+v0.8.0 includes a line number in annotations when `context_span.line` is present. For PDFs, this is a line in extracted text, not a visual page coordinate. PR comments need suitable repository write permissions. The Action's implementation does not mean this offline example ran in hosted CI.
+
+## Configuration
+
+| Option | Default / scope | Purpose |
+|---|---|---|
+| `--json PATH` | Full workflow: `<input>.citeguard.json` | Select JSON output |
+| `--md PATH` | No Markdown file | Add a report |
+| `--no-cache` | Cache enabled | Query registries again; this is not an offline mode |
+| `--strict` | Off | Exit 1 on a miss in the top-level full workflow |
+| `--changed-only PATH` | CI mode off | Read one changed path per line |
+| `--fail-on` | `none` | CI threshold class: none / miss / degraded |
+| `--max-misses N` | `0` | CI tolerated count |
+| `--paths` | `**/*.pdf,**/*.tex,**/*.md` | Filter CI files |
+| `--summary-out PATH` | No summary file | Append a Markdown job summary |
+| `--annotations / --no-annotations` | On in CI mode | Control workflow-command annotations |
+| `GITHUB_TOKEN` | Optional | Authenticate GitHub resolver requests |
+
+There is no configuration file. The default cache is `~/.cache/citeguard/registry.db`. Deduplication uses `(kind, identifier)`, and output follows matcher-pass order rather than necessarily following document order.
+
+## Current scope and next directions
+
+v0.8.0 implements five identifier types, registry resolvers, caching, reports, CI thresholds, a GitHub Action and line-aware annotations. The current implementation has no OCR, LLM extraction, automatic citation repair, full argument assessment or hosted team interface. GitLab CI components, an optional LLM fallback and Windows distribution remain future directions.
+
+Development commands and dependencies are defined in [pyproject.toml](pyproject.toml). Existing tests exercise resolver, cache and CI contracts. Their mocked responses test branches; they are not evidence that a live registry confirmed a citation.
 
 ## License
 
-[Apache-2.0](./LICENSE).  Free for commercial, academic, and personal use — and
-that's not going to change.
-
-## Acknowledgements
-
-CiteGuard started from a concrete pain point: in 2026 arXiv began issuing
-one-year submission bans for papers containing unchecked LLM errors such as
-hallucinated references, and OSS security maintainers were drowning in
-LLM-assisted bug reports citing CVEs and commits that don't exist.  This
-repository is a deterministic, no-LLM answer to that pain — it only ever
-answers "does this citation actually exist?".
+[Apache-2.0](LICENSE) · [Source and issues](https://github.com/SuperMarioYL/citeguard)

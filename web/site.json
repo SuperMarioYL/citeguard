@@ -1,114 +1,291 @@
 {
-  "schema": 1,
-  "name": "citeguard",
+  "schema": 3,
+  "name": "CiteGuard",
   "github": "https://github.com/SuperMarioYL/citeguard",
-  "host": "citeguard.lei6393.com",
-  "meta": {
-    "content_version": "v0.8.0",
-    "updated": "2026-09-05",
-    "release": "https://github.com/SuperMarioYL/citeguard/releases/tag/v0.8.0"
+  "palette": "auto",
+  "lang": {
+    "primary": "zh",
+    "toggle": true
   },
-  "lang": { "primary": "zh", "toggle": true },
-  "accent": ["#3fb950"],
+  "meta": {
+    "visual_profile": "neon-particle",
+    "content_version": "0.8.0",
+    "demo_source": "docs/demo-results.json"
+  },
   "hero": {
     "eyebrow": {
-      "zh": "一条命令 · 不靠 LLM · 真 registry",
-      "en": "One command · No LLM · Real registries"
+      "zh": "引用核验 · 证据与原文位置",
+      "en": "REFERENCE CHECKS · EVIDENCE AND SOURCE CONTEXT"
     },
     "headline": {
-      "zh": "粘一篇论文\n红绿表点出每条编造的引用",
-      "en": "Paste a paper\nA red/green table flags every fabricated citation"
+      "zh": "核验引用，\n保留证据与出处",
+      "en": "Check references.\nKeep the evidence."
     },
     "sub": {
-      "zh": "DOI、arXiv、CVE、commit、issue 一次性核验到 OpenAlex、Crossref、arXiv、NVD、GitHub——不靠 LLM，宁可漏报也不误报红条。",
-      "en": "Every DOI, arXiv ID, CVE, commit, and issue is verified against OpenAlex, Crossref, arXiv, NVD, and GitHub at once — no LLM, would rather miss than false-alarm."
+      "zh": "从论文和问题报告抽取 DOI、arXiv、CVE 和 GitHub 标识符，向对应 registry 查询，保留核验结果和原文位置。",
+      "en": "Extract DOI, arXiv, CVE and GitHub identifiers from papers and issue reports, query the appropriate registries, and retain results with source context."
     },
-    "command": "citeguard paper.pdf",
-    "cta": { "zh": "开始核验", "en": "Start verifying" },
-    "ctaGithub": { "zh": "在 GitHub 查看", "en": "View on GitHub" }
+    "href": "#quickstart",
+    "cta": {
+      "zh": "运行离线示例",
+      "en": "Run the offline example"
+    },
+    "ctaGithub": {
+      "zh": "查看源码",
+      "en": "View source"
+    }
+  },
+  "scene": {
+    "kind": "neon-graph",
+    "caption": {
+      "zh": "从标识符回到原文",
+      "en": "FROM IDENTIFIER TO SOURCE"
+    },
+    "fallback": "/assets/scene-dark.svg",
+    "fallbackLight": "/assets/scene-light.svg"
   },
   "advantages": [
     {
       "title": {
-        "zh": "一条命令，红绿表说清每条引用真假",
-        "en": "One command, a red/green verdict on every citation"
+        "zh": "先找出需要核对的内容",
+        "en": "Find what needs checking"
       },
       "body": {
-        "zh": "粘 PDF / .tex / .md：绿勾=真 registry 命中并带证据链接，红叉=找不到且给最多 3 个最接近候选，黄问号=超时或限流。",
-        "en": "Paste a PDF / .tex / .md: green check = real registry hit with an evidence link; red cross = not found, with up to 3 nearest matches; yellow = timeout or rate-limit."
-      },
-      "chips": [
-        "› 绿 / 红 / 黄三态",
-        "› 带证据链接",
-        "› 最多 3 个近似候选"
-      ]
+        "zh": "确定性抽取五类标识符，保留匹配文本与行号，可先在本地检查输入。",
+        "en": "Deterministic extraction finds five identifier types and retains matched text and line numbers for local inspection."
+      }
     },
     {
       "title": {
-        "zh": "CI 里每个 PR 自动核验",
-        "en": "Every PR auto-verified in CI"
+        "zh": "结果附带可追溯证据",
+        "en": "Keep evidence with the result"
       },
       "body": {
-        "zh": "把 GitHub Action 放进仓库，改 .pdf / .tex / .md 的 PR 自动跑核验，红绿报告贴在 PR 评论上，按 miss / degraded 阈值决定是否挂掉。",
-        "en": "Drop the GitHub Action in and every PR touching .pdf / .tex / .md runs a check, posts a sticky red/green comment, and fails the build on your miss / degraded threshold."
-      },
-      "chips": [
-        "› sticky PR 评论",
-        "› 按阈值挂掉",
-        "› 只核验改动文件",
-        "› 行级 inline annotation"
-      ]
+        "zh": "联网结果区分 hit、miss 与 degraded，保存 evidence_url 或原因，方便回到原文复核。",
+        "en": "Network results distinguish hit, miss and degraded, with evidence URLs or notes to support source review."
+      }
     },
     {
       "title": {
-        "zh": "五类标识符 × 五个真 registry",
-        "en": "Five identifier types × five real registries"
+        "zh": "把核验接进已有流程",
+        "en": "Fit checks into your workflow"
       },
       "body": {
-        "zh": "DOI、arXiv、CVE、commit SHA、owner/repo#issue 一次性打到 OpenAlex、Crossref、arXiv、NVD、GitHub——并发跑、退避重试、7 天缓存兜底。",
-        "en": "DOI, arXiv ID, CVE, commit SHA, owner/repo#issue — fanned out to OpenAlex, Crossref, arXiv, NVD, and GitHub at once, with backoff and a 7-day cache."
-      },
-      "chips": [
-        "› 5 类标识符",
-        "› 5 个 registry",
-        "› 7 天 fail-soft 缓存"
-      ]
-    },
-    {
-      "title": {
-        "zh": "不靠 LLM，精度优先",
-        "en": "No LLM. Precision first."
-      },
-      "body": {
-        "zh": "抽取只走正则、不调用 LLM，宁可漏报也不误报红条；同时落一份 schema 稳定的 JSON 边车，给 desk-reject 流水线直接消费。",
-        "en": "Extraction runs on regex alone — no LLM — and would rather miss than false-alarm. A stable-schema JSON sidecar drops alongside for your desk-reject pipeline to consume."
-      },
-      "chips": [
-        "› 不调用 LLM",
-        "› JSON 边车",
-        "› Apache-2.0"
-      ]
+        "zh": "终端、JSON 和 Markdown 报告服务本地使用；GitHub Action 支持 changed files、summary 和 annotation。",
+        "en": "Terminal, JSON and Markdown reports serve local workflows; the GitHub Action supports changed files, summaries and annotations."
+      }
     }
   ],
-  "scene": {
-    "kind": "hub-nodes",
-    "nodes": ["OpenAlex", "Crossref", "arXiv", "NVD", "GitHub"]
-  },
-  "cta": {
-    "headline": {
-      "zh": "投稿前，先让 registry 说话",
-      "en": "Before you submit, let the registries speak"
+  "story": {
+    "intro": {
+      "title": {
+        "zh": "一个看似可信的编号，\n还需要一次有出处的核对。",
+        "en": "A plausible identifier\nstill needs a traceable check."
+      },
+      "body": {
+        "zh": "论文和问题报告中的引用可能包含笔误、缺少上下文，或遇到不可用的 registry。CiteGuard 把抽取、查询和定位放进同一个流程，让你知道找到了什么，也知道哪些结果仍需人工检查。",
+        "en": "References in papers and issue reports can have typos, missing context or unavailable registries. CiteGuard combines extraction, lookup and source location so you can inspect what was found and what still needs review."
+      }
     },
-    "sub": {
-      "zh": "一条命令装上，本地或 CI 都能跑。",
-      "en": "One command to install — runs locally or in CI."
-    },
-    "button": { "zh": "pipx install citeguard", "en": "pipx install citeguard" }
+    "sections": [
+      {
+        "title": {
+          "zh": "抽取标识符，保留原文位置",
+          "en": "Extract identifiers with source locations"
+        },
+        "body": {
+          "zh": "先运行无需网络的 extract。示例中的重复 arXiv 合并为一个 ID，Citation 保留规范化值、原始匹配和原文行号。抽取本身不代表引用已被核验。",
+          "en": "Start with network-free extraction. Repeated arXiv references collapse to one ID while Citation retains the normalized value, raw match and line number. Extraction is not verification."
+        },
+        "image": {
+          "light": "/assets/process-light.svg",
+          "dark": "/assets/process-dark.svg",
+          "alt": {
+            "zh": "离线示例的 5 个唯一标识符及行号。",
+            "en": "Five unique identifiers and line numbers from the offline example."
+          }
+        }
+      },
+      {
+        "title": {
+          "zh": "联网查询与本地状态各司其职",
+          "en": "Separate lookup from local state"
+        },
+        "body": {
+          "zh": "DOI 查询在 OpenAlex miss 后才回退 Crossref；缓存保留 7 天且不缓存 degraded。网络错误保留无法判定的状态，报告展示证据链接或原因。",
+          "en": "DOI checks fall back to Crossref only after an OpenAlex miss. Cache entries last seven days and exclude degraded results. Network problems remain inconclusive, with evidence links or reasons in reports."
+        },
+        "image": {
+          "light": "/assets/architecture-light.svg",
+          "dark": "/assets/architecture-dark.svg",
+          "alt": {
+            "zh": "抽取、registry resolver、缓存与报告的数据路径。",
+            "en": "Data paths through extraction, registry resolvers, cache and reports."
+          }
+        }
+      },
+      {
+        "title": {
+          "zh": "按标识符类型选择核验路径",
+          "en": "Choose the route by identifier type"
+        },
+        "body": {
+          "zh": "五类标识符对应 OpenAlex、Crossref、arXiv、NVD 和 GitHub；文档与 CI 侧共用 Citation 和 VerifyResult。",
+          "en": "The five identifier types route to OpenAlex, Crossref, arXiv, NVD and GitHub. Document and CI workflows share Citation and VerifyResult objects."
+        },
+        "image": {
+          "light": "/assets/integrations-light.svg",
+          "dark": "/assets/integrations-dark.svg",
+          "alt": {
+            "zh": "标识符类型、registry 路由与输出接入。",
+            "en": "Identifier types, registry routes and output integrations."
+          }
+        }
+      }
+    ],
+    "details": [
+      {
+        "title": {
+          "zh": "v0.8.0 的 extract 调用形式",
+          "en": "The v0.8.0 extract invocation"
+        },
+        "body": {
+          "zh": "当前命令组会先吃掉一个顶层 PATH，再解析 extract 子命令。离线示例把同一路径写在两处；普通 citeguard extract PATH 会被误解析。",
+          "en": "The command group consumes a top-level PATH before parsing extract. The offline example supplies that path twice; the shorter citeguard extract PATH form is misparsed."
+        },
+        "code": "citeguard examples/identifiers.md extract examples/identifiers.md"
+      },
+      {
+        "title": {
+          "zh": "联网核验的输出",
+          "en": "Output from network verification"
+        },
+        "body": {
+          "zh": "默认写入 <input>.citeguard.json，可选择额外 Markdown。hit 表示 registry 返回记录，miss 表示未找到，degraded 表示无法判定。",
+          "en": "The default output is <input>.citeguard.json, with optional Markdown. hit means a registry record was found, miss means it was not found, and degraded means no verdict was available."
+        },
+        "code": "citeguard --json report.json --md report.md examples/identifiers.md"
+      },
+      {
+        "title": {
+          "zh": "CI 阈值和原文行号",
+          "en": "CI thresholds and source lines"
+        },
+        "body": {
+          "zh": "changed-only 模式支持 none、miss 和 degraded 三类阈值，以及容许数量。v0.8.0 在有行号时输出对应 annotation；退出码区分通过、超限与用法错误。",
+          "en": "Changed-only mode supports none, miss and degraded thresholds plus a tolerated count. v0.8.0 emits line-aware annotations when available, with separate exit codes for pass, threshold failure and usage errors."
+        },
+        "code": "printf '%s\\n' examples/identifiers.md > changed.txt\nciteguard --changed-only changed.txt --fail-on miss --max-misses 0 --summary-out summary.md"
+      }
+    ]
   },
+  "demo": {
+    "title": {
+      "zh": "三个离线输入，查看原始 CLI 输出",
+      "en": "Three offline inputs, actual CLI output"
+    },
+    "note": {
+      "zh": "以下为 CiteGuard v0.8.0 的实际抽取结果：5、2、2 个标识符。输入是可复制的示例文本；没有查询 registry，也没有用 mock 生成核验状态。",
+      "en": "These are actual CiteGuard v0.8.0 extraction outputs: five, two and two identifiers. Inputs are reproducible example text. No registries were queried and no mock verification statuses were produced."
+    },
+    "source": "/assets/demo-results.json",
+    "steps": [
+      {
+        "label": {
+          "zh": "混合标识符",
+          "en": "Mixed identifiers"
+        },
+        "body": {
+          "zh": "7 行输入得到 5 个唯一标识符；重复 arXiv 被合并，每个结果保留原文行号。",
+          "en": "Seven input lines yield five unique identifiers. Repeated arXiv references collapse, and source line numbers are retained."
+        },
+        "image": "/assets/process-light.svg",
+        "imageDark": "/assets/process-dark.svg",
+        "command": "citeguard examples/identifiers.md extract examples/identifiers.md",
+        "output": "[\n  {\"raw_text\":\"DOI: 10.1145/3460120.\",\"kind\":\"doi\",\"identifier\":\"10.1145/3460120\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":14,\"end\":35,\"line\":2}},\n  {\"raw_text\":\"arXiv:1706.03762v2\",\"kind\":\"arxiv\",\"identifier\":\"1706.03762\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":36,\"end\":54,\"line\":3}},\n  {\"raw_text\":\"CVE-2024-3094\",\"kind\":\"cve\",\"identifier\":\"CVE-2024-3094\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":55,\"end\":68,\"line\":4}},\n  {\"raw_text\":\"commit 0123456789abcdef0123456789abcdef01234567\",\"kind\":\"commit\",\"identifier\":\"0123456789abcdef0123456789abcdef01234567\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":69,\"end\":116,\"line\":5}},\n  {\"raw_text\":\"https://github.com/example/project/issues/42\",\"kind\":\"gh_issue\",\"identifier\":\"example/project#42\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":117,\"end\":161,\"line\":6}}\n]\n"
+      },
+      {
+        "label": {
+          "zh": "规范化与去重",
+          "en": "Normalize and deduplicate"
+        },
+        "body": {
+          "zh": "两个大小写不同的 DOI 合为一个；不同版本的 arXiv 也合为一个，共输出 2 条。",
+          "en": "DOIs differing only in case collapse, as do arXiv references with different versions: two objects remain."
+        },
+        "image": "/assets/demo-normalized-light.svg",
+        "imageDark": "/assets/demo-normalized-dark.svg",
+        "command": "citeguard examples/normalized.tex extract examples/normalized.tex",
+        "output": "[\n  {\"raw_text\":\"DOI: 10.1000/EXAMPLE.\",\"kind\":\"doi\",\"identifier\":\"10.1000/example\",\"context_span\":{\"file\":\"examples/normalized.tex\",\"start\":31,\"end\":52,\"line\":2}},\n  {\"raw_text\":\"arXiv:1706.03762v2\",\"kind\":\"arxiv\",\"identifier\":\"1706.03762\",\"context_span\":{\"file\":\"examples/normalized.tex\",\"start\":129,\"end\":147,\"line\":5}}\n]\n"
+      },
+      {
+        "label": {
+          "zh": "匹配边界",
+          "en": "Respect matching boundaries"
+        },
+        "body": {
+          "zh": "DOI 的 #2 片段没有变成 GitHub issue；没有前缀的 40 位哈希未被抽取，结果是 DOI 和一个 issue。",
+          "en": "The DOI fragment #2 does not become a GitHub issue. The unanchored 40-character hash is excluded, leaving a DOI and one issue."
+        },
+        "image": "/assets/demo-boundaries-light.svg",
+        "imageDark": "/assets/demo-boundaries-dark.svg",
+        "command": "citeguard examples/boundaries.txt extract examples/boundaries.txt",
+        "output": "[\n  {\"raw_text\":\"https://doi.org/10.1145/3460120\",\"kind\":\"doi\",\"identifier\":\"10.1145/3460120\",\"context_span\":{\"file\":\"examples/boundaries.txt\",\"start\":14,\"end\":45,\"line\":1}},\n  {\"raw_text\":\"https://github.com/example/project/issues/42\",\"kind\":\"gh_issue\",\"identifier\":\"example/project#42\",\"context_span\":{\"file\":\"examples/boundaries.txt\",\"start\":116,\"end\":160,\"line\":3}}\n]\n"
+      }
+    ]
+  },
+  "quickstart": {
+    "title": {
+      "zh": "从完整输入开始",
+      "en": "Start with complete input"
+    },
+    "body": {
+      "zh": "需要 Python 3.11+。安装需要网络，随后只执行本地抽取。该调用形式包含 v0.8.0 所需的顶层 PATH。",
+      "en": "Requires Python 3.11+. Installation needs network access; the following extraction is local. The invocation includes the top-level PATH required by v0.8.0."
+    },
+    "steps": [
+      {
+        "title": {
+          "zh": "从源码安装",
+          "en": "Install from source"
+        },
+        "code": "git clone https://github.com/SuperMarioYL/citeguard.git\ncd citeguard\npython3 -m venv .venv\nsource .venv/bin/activate\npython -m pip install -e ."
+      },
+      {
+        "title": {
+          "zh": "创建演示输入",
+          "en": "Create the demo input"
+        },
+        "code": "mkdir -p examples\ncat > examples/identifiers.md <<'CITEGUARD_INPUT'\nResearch note\nDOI: 10.1145/3460120.\narXiv:1706.03762v2\nCVE-2024-3094\ncommit 0123456789abcdef0123456789abcdef01234567\nhttps://github.com/example/project/issues/42\nRepeat: arXiv:1706.03762\nCITEGUARD_INPUT"
+      },
+      {
+        "title": {
+          "zh": "提取标识符与行号",
+          "en": "Extract identifiers and line numbers"
+        },
+        "code": "citeguard examples/identifiers.md extract examples/identifiers.md"
+      }
+    ]
+  },
+  "limitations": [
+    {
+      "zh": "抽取到标识符不等于 registry 确认存在；核验也不判断论文是否支持某个论点。",
+      "en": "Extracting an identifier does not confirm its existence. Verification does not assess whether a paper supports a claim."
+    },
+    {
+      "zh": "PDF 需要文本层；当前没有 OCR 或 LLM 抽取，普通无标识符书目不保证被识别。",
+      "en": "PDFs need a text layer. There is no OCR or LLM extraction, and free-form references without identifiers may not be recognized."
+    },
+    {
+      "zh": "GitHub commit 核验需要 owner/repo；网络超时或缺少上下文会导致 degraded。",
+      "en": "GitHub commit verification needs owner/repo context; timeouts or missing context can yield degraded."
+    }
+  ],
   "footer": {
     "tag": {
-      "zh": "一条命令的引文核验工具",
-      "en": "The one-command citation verifier"
+      "zh": "v0.8.0 · Python 3.11+ · Apache-2.0",
+      "en": "v0.8.0 · Python 3.11+ · Apache-2.0"
     }
-  }
+  },
+  "host": "citeguard.lei6393.com"
 }

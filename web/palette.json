@@ -1,0 +1,38 @@
+{
+  "mode": "auto",
+  "id": "a3e656-6ae76a-eef6ac-5ec4b0edb8b3",
+  "identity": "https://github.com/supermarioyl/citeguard",
+  "primary": "#a3e656",
+  "secondary": "#6ae76a",
+  "highlight": "#eef6ac",
+  "dark": {
+    "bg": "#080c0d",
+    "panel": "#101717",
+    "code": "#0f1713",
+    "ink": "#fcfdee",
+    "muted": "#a5b9a8",
+    "line": "#2a3c1d",
+    "primary": "#a3e656",
+    "secondary": "#6ae76a",
+    "highlight": "#eef6ac",
+    "accent": "#a3e656",
+    "buttonStart": "#5c8130",
+    "buttonEnd": "#3d853d",
+    "buttonText": "#ffffff"
+  },
+  "light": {
+    "bg": "#fcfef9",
+    "panel": "#fafef7",
+    "code": "#f9fdf3",
+    "ink": "#1e2a1c",
+    "muted": "#64796a",
+    "line": "#e3f7cb",
+    "primary": "#5a7f30",
+    "secondary": "#3c833c",
+    "highlight": "#747754",
+    "accent": "#5a7f30",
+    "buttonStart": "#5c8130",
+    "buttonEnd": "#3d853d",
+    "buttonText": "#ffffff"
+  }
+}
