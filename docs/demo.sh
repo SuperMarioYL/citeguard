@@ -22,7 +22,7 @@ cat > examples/normalized.tex <<'CITEGUARD_INPUT'
 See https://arxiv.org/abs/1706.03762v3.
 See arXiv:1706.03762v2.
 CITEGUARD_INPUT
-# v0.8.0 requires the leading top-level PATH before the extract subcommand.
-citeguard examples/identifiers.md extract examples/identifiers.md
-citeguard examples/normalized.tex extract examples/normalized.tex
-citeguard examples/boundaries.txt extract examples/boundaries.txt
+# v0.9.0 dispatches the documented sub-command form directly.
+citeguard extract examples/identifiers.md
+citeguard extract examples/normalized.tex
+citeguard extract examples/boundaries.txt

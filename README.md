@@ -9,7 +9,7 @@
 
 **CiteGuard 从论文和问题报告中提取标识符，向对应 registry 查询，并把结果、证据链接和原文位置放到一起。**
 
-`v0.8.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
+`v0.9.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
 
 [用途](#用途) · [架构](#架构) · [安装](#安装) · [离线上手](#离线上手) · [联网核验](#联网核验与输出) · [CI](#接入-ci) · [配置](#配置) · [范围](#当前范围与后续方向)
 
@@ -65,13 +65,13 @@ Repeat: arXiv:1706.03762
 CITEGUARD_INPUT
 ```
 
-运行 v0.8.0 的实际可用调用形式：
+v0.9.0 起文档里的短形式可以直接使用：
 
 ```bash
-citeguard examples/identifiers.md extract examples/identifiers.md
+citeguard extract examples/identifiers.md
 ```
 
-v0.8.0 的命令组会先解析顶层 `PATH`，所以这里把路径写在 `extract` 前后各一次。直接执行 `citeguard extract examples/identifiers.md` 会被误解析为未知子命令。上述调用进入现有抽取实现，无需改源码。
+（v0.9.0 之前的版本会先解析顶层 `PATH`，路径需要写在 `extract` 前后各一次。）
 
 <picture>
   <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/process-mobile-dark.svg">

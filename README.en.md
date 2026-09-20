@@ -9,7 +9,7 @@
 
 **CiteGuard extracts identifiers from papers and issue reports, queries the relevant registries, and keeps each result with its evidence link and source location.**
 
-`v0.8.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
+`v0.9.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
 
 [Use cases](#use-cases) · [Architecture](#architecture) · [Install](#install) · [Offline quickstart](#offline-quickstart) · [Verification](#network-verification-and-output) · [CI](#ci-integration) · [Configuration](#configuration) · [Scope](#current-scope-and-next-directions)
 
@@ -65,13 +65,13 @@ Repeat: arXiv:1706.03762
 CITEGUARD_INPUT
 ```
 
-Use this working v0.8.0 invocation:
+As of v0.9.0 the documented short form works directly:
 
 ```bash
-citeguard examples/identifiers.md extract examples/identifiers.md
+citeguard extract examples/identifiers.md
 ```
 
-The v0.8.0 command group parses a top-level `PATH` before the subcommand, so the path appears both before and after `extract`. The shorter `citeguard extract examples/identifiers.md` is misparsed as an unknown subcommand. The invocation above reaches the existing extractor without changing source code.
+(Releases before v0.9.0 parsed a top-level `PATH` before the subcommand, so the path had to appear both before and after `extract`.)
 
 <picture>
   <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/process-mobile-dark.svg">

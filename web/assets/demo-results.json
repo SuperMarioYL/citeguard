@@ -1,7 +1,7 @@
 {
-  "version": "0.8.0",
-  "source_commit": "b6d699d6c1c7c11d015ade41668fb38d1b669094",
-  "runtime": "Python 3.14.4",
+  "version": "0.9.0",
+  "source_commit": "6d431536d49b675d563c0d10dd2f9f1fe55dbd1e",
+  "runtime": "Python 3.12.13",
   "scope": "Offline identifier extraction only. Inputs are illustrative text; no registry queries or mocked verification results were used.",
   "inputs": [
     {
@@ -22,19 +22,19 @@
   ],
   "steps": [
     {
-      "command": "citeguard examples/identifiers.md extract examples/identifiers.md",
+      "command": "citeguard extract examples/identifiers.md",
       "output": "[\n  {\"raw_text\":\"DOI: 10.1145/3460120.\",\"kind\":\"doi\",\"identifier\":\"10.1145/3460120\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":14,\"end\":35,\"line\":2}},\n  {\"raw_text\":\"arXiv:1706.03762v2\",\"kind\":\"arxiv\",\"identifier\":\"1706.03762\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":36,\"end\":54,\"line\":3}},\n  {\"raw_text\":\"CVE-2024-3094\",\"kind\":\"cve\",\"identifier\":\"CVE-2024-3094\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":55,\"end\":68,\"line\":4}},\n  {\"raw_text\":\"commit 0123456789abcdef0123456789abcdef01234567\",\"kind\":\"commit\",\"identifier\":\"0123456789abcdef0123456789abcdef01234567\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":69,\"end\":116,\"line\":5}},\n  {\"raw_text\":\"https://github.com/example/project/issues/42\",\"kind\":\"gh_issue\",\"identifier\":\"example/project#42\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":117,\"end\":161,\"line\":6}}\n]\n",
       "stderr": "",
       "exit_code": 0
     },
     {
-      "command": "citeguard examples/normalized.tex extract examples/normalized.tex",
+      "command": "citeguard extract examples/normalized.tex",
       "output": "[\n  {\"raw_text\":\"DOI: 10.1000/EXAMPLE.\",\"kind\":\"doi\",\"identifier\":\"10.1000/example\",\"context_span\":{\"file\":\"examples/normalized.tex\",\"start\":31,\"end\":52,\"line\":2}},\n  {\"raw_text\":\"arXiv:1706.03762v2\",\"kind\":\"arxiv\",\"identifier\":\"1706.03762\",\"context_span\":{\"file\":\"examples/normalized.tex\",\"start\":129,\"end\":147,\"line\":5}}\n]\n",
       "stderr": "",
       "exit_code": 0
     },
     {
-      "command": "citeguard examples/boundaries.txt extract examples/boundaries.txt",
+      "command": "citeguard extract examples/boundaries.txt",
       "output": "[\n  {\"raw_text\":\"https://doi.org/10.1145/3460120\",\"kind\":\"doi\",\"identifier\":\"10.1145/3460120\",\"context_span\":{\"file\":\"examples/boundaries.txt\",\"start\":14,\"end\":45,\"line\":1}},\n  {\"raw_text\":\"https://github.com/example/project/issues/42\",\"kind\":\"gh_issue\",\"identifier\":\"example/project#42\",\"context_span\":{\"file\":\"examples/boundaries.txt\",\"start\":116,\"end\":160,\"line\":3}}\n]\n",
       "stderr": "",
       "exit_code": 0
@@ -42,21 +42,20 @@
   ],
   "verification_steps": [
     {
-      "command": "citeguard --version",
-      "output": "citeguard, version 0.8.0\n",
+      "command": ".venv/bin/citeguard --version",
+      "output": "citeguard, version 0.9.0\n",
       "stderr": "",
       "exit_code": 0
     },
     {
-      "command": "citeguard extract examples/identifiers.md",
-      "output": "",
-      "stderr": "Usage: citeguard [OPTIONS] [PATH] [COMMAND] [ARGS]...\nTry 'citeguard --help' for help.\n\nError: No such command 'examples/identifiers.md'.\n",
-      "exit_code": 2
+      "command": ".venv/bin/citeguard extract examples/identifiers.md",
+      "output": "[\n  {\"raw_text\":\"DOI: 10.1145/3460120.\",\"kind\":\"doi\",\"identifier\":\"10.1145/3460120\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":14,\"end\":35,\"line\":2}},\n  {\"raw_text\":\"arXiv:1706.03762v2\",\"kind\":\"arxiv\",\"identifier\":\"1706.03762\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":36,\"end\":54,\"line\":3}},\n  {\"raw_text\":\"CVE-2024-3094\",\"kind\":\"cve\",\"identifier\":\"CVE-2024-3094\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":55,\"end\":68,\"line\":4}},\n  {\"raw_text\":\"commit 0123456789abcdef0123456789abcdef01234567\",\"kind\":\"commit\",\"identifier\":\"0123456789abcdef0123456789abcdef01234567\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":69,\"end\":116,\"line\":5}},\n  {\"raw_text\":\"https://github.com/example/project/issues/42\",\"kind\":\"gh_issue\",\"identifier\":\"example/project#42\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":117,\"end\":161,\"line\":6}}\n]\n",
+      "stderr": "",
+      "exit_code": 0
     }
   ],
   "limits": [
     "Extraction identifies text patterns; it does not establish that a citation exists.",
-    "The v0.8.0 Click group consumes a leading PATH before extract. The recorded commands supply that PATH explicitly.",
     "Output order follows matcher passes, not necessarily document order."
   ]
 }

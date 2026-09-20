@@ -9,7 +9,7 @@
   },
   "meta": {
     "visual_profile": "neon-particle",
-    "content_version": "0.8.0",
+    "content_version": "0.9.0",
     "demo_source": "docs/demo-results.json"
   },
   "hero": {
@@ -158,14 +158,14 @@
     "details": [
       {
         "title": {
-          "zh": "v0.8.0 的 extract 调用形式",
-          "en": "The v0.8.0 extract invocation"
+          "zh": "v0.9.0 的 extract 调用形式",
+          "en": "The v0.9.0 extract invocation"
         },
         "body": {
-          "zh": "当前命令组会先吃掉一个顶层 PATH，再解析 extract 子命令。离线示例把同一路径写在两处；普通 citeguard extract PATH 会被误解析。",
-          "en": "The command group consumes a top-level PATH before parsing extract. The offline example supplies that path twice; the shorter citeguard extract PATH form is misparsed."
+          "zh": "v0.9.0 起文档中的 citeguard extract PATH 短形式可以直达子命令，不再需要把顶层 PATH 写在前面。",
+          "en": "As of v0.9.0 the documented citeguard extract PATH form dispatches directly; releases before v0.9.0 required a top-level PATH before the subcommand."
         },
-        "code": "citeguard examples/identifiers.md extract examples/identifiers.md"
+        "code": "citeguard extract examples/identifiers.md"
       },
       {
         "title": {
@@ -197,8 +197,8 @@
       "en": "Three offline inputs, actual CLI output"
     },
     "note": {
-      "zh": "以下为 CiteGuard v0.8.0 的实际抽取结果：5、2、2 个标识符。输入是可复制的示例文本；没有查询 registry，也没有用 mock 生成核验状态。",
-      "en": "These are actual CiteGuard v0.8.0 extraction outputs: five, two and two identifiers. Inputs are reproducible example text. No registries were queried and no mock verification statuses were produced."
+      "zh": "以下为 CiteGuard v0.9.0 的实际抽取结果：5、2、2 个标识符。输入是可复制的示例文本；没有查询 registry，也没有用 mock 生成核验状态。",
+      "en": "These are actual CiteGuard v0.9.0 extraction outputs: five, two and two identifiers. Inputs are reproducible example text. No registries were queried and no mock verification statuses were produced."
     },
     "source": "/assets/demo-results.json",
     "steps": [
@@ -213,7 +213,7 @@
         },
         "image": "/assets/process-light.svg",
         "imageDark": "/assets/process-dark.svg",
-        "command": "citeguard examples/identifiers.md extract examples/identifiers.md",
+        "command": "citeguard extract examples/identifiers.md",
         "output": "[\n  {\"raw_text\":\"DOI: 10.1145/3460120.\",\"kind\":\"doi\",\"identifier\":\"10.1145/3460120\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":14,\"end\":35,\"line\":2}},\n  {\"raw_text\":\"arXiv:1706.03762v2\",\"kind\":\"arxiv\",\"identifier\":\"1706.03762\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":36,\"end\":54,\"line\":3}},\n  {\"raw_text\":\"CVE-2024-3094\",\"kind\":\"cve\",\"identifier\":\"CVE-2024-3094\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":55,\"end\":68,\"line\":4}},\n  {\"raw_text\":\"commit 0123456789abcdef0123456789abcdef01234567\",\"kind\":\"commit\",\"identifier\":\"0123456789abcdef0123456789abcdef01234567\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":69,\"end\":116,\"line\":5}},\n  {\"raw_text\":\"https://github.com/example/project/issues/42\",\"kind\":\"gh_issue\",\"identifier\":\"example/project#42\",\"context_span\":{\"file\":\"examples/identifiers.md\",\"start\":117,\"end\":161,\"line\":6}}\n]\n"
       },
       {
@@ -227,7 +227,7 @@
         },
         "image": "/assets/demo-normalized-light.svg",
         "imageDark": "/assets/demo-normalized-dark.svg",
-        "command": "citeguard examples/normalized.tex extract examples/normalized.tex",
+        "command": "citeguard extract examples/normalized.tex",
         "output": "[\n  {\"raw_text\":\"DOI: 10.1000/EXAMPLE.\",\"kind\":\"doi\",\"identifier\":\"10.1000/example\",\"context_span\":{\"file\":\"examples/normalized.tex\",\"start\":31,\"end\":52,\"line\":2}},\n  {\"raw_text\":\"arXiv:1706.03762v2\",\"kind\":\"arxiv\",\"identifier\":\"1706.03762\",\"context_span\":{\"file\":\"examples/normalized.tex\",\"start\":129,\"end\":147,\"line\":5}}\n]\n"
       },
       {
@@ -241,7 +241,7 @@
         },
         "image": "/assets/demo-boundaries-light.svg",
         "imageDark": "/assets/demo-boundaries-dark.svg",
-        "command": "citeguard examples/boundaries.txt extract examples/boundaries.txt",
+        "command": "citeguard extract examples/boundaries.txt",
         "output": "[\n  {\"raw_text\":\"https://doi.org/10.1145/3460120\",\"kind\":\"doi\",\"identifier\":\"10.1145/3460120\",\"context_span\":{\"file\":\"examples/boundaries.txt\",\"start\":14,\"end\":45,\"line\":1}},\n  {\"raw_text\":\"https://github.com/example/project/issues/42\",\"kind\":\"gh_issue\",\"identifier\":\"example/project#42\",\"context_span\":{\"file\":\"examples/boundaries.txt\",\"start\":116,\"end\":160,\"line\":3}}\n]\n"
       }
     ]
@@ -252,8 +252,8 @@
       "en": "Start with complete input"
     },
     "body": {
-      "zh": "需要 Python 3.11+。安装需要网络，随后只执行本地抽取。该调用形式包含 v0.8.0 所需的顶层 PATH。",
-      "en": "Requires Python 3.11+. Installation needs network access; the following extraction is local. The invocation includes the top-level PATH required by v0.8.0."
+      "zh": "需要 Python 3.11+。安装需要网络，随后只执行本地抽取。",
+      "en": "Requires Python 3.11+. Installation needs network access; the following extraction is local."
     },
     "steps": [
       {
@@ -275,7 +275,7 @@
           "zh": "提取标识符与行号",
           "en": "Extract identifiers and line numbers"
         },
-        "code": "citeguard examples/identifiers.md extract examples/identifiers.md"
+        "code": "citeguard extract examples/identifiers.md"
       }
     ]
   },
@@ -295,8 +295,8 @@
   ],
   "footer": {
     "tag": {
-      "zh": "v0.8.0 · Python 3.11+ · Apache-2.0",
-      "en": "v0.8.0 · Python 3.11+ · Apache-2.0"
+      "zh": "v0.9.0 · Python 3.11+ · Apache-2.0",
+      "en": "v0.9.0 · Python 3.11+ · Apache-2.0"
     }
   },
   "host": "citeguard.lei6393.com"

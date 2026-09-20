@@ -40,7 +40,7 @@ HERO
 
 **CiteGuard 从论文和问题报告中提取标识符，向对应 registry 查询，并把结果、证据链接和原文位置放到一起。**
 
-`v0.8.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
+`v0.9.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
 
 [用途](#用途) · [架构](#架构) · [安装](#安装) · [离线上手](#离线上手) · [联网核验](#联网核验与输出) · [CI](#接入-ci) · [配置](#配置) · [范围](#当前范围与后续方向)
 
@@ -78,13 +78,13 @@ INSTALL
 CREATE_INPUT
 ```
 
-运行 v0.8.0 的实际可用调用形式：
+v0.9.0 起文档里的短形式可以直接使用：
 
 ```bash
 EXTRACT
 ```
 
-v0.8.0 的命令组会先解析顶层 `PATH`，所以这里把路径写在 `extract` 前后各一次。直接执行 `citeguard extract examples/identifiers.md` 会被误解析为未知子命令。上述调用进入现有抽取实现，无需改源码。
+（v0.9.0 之前的版本会先解析顶层 `PATH`，路径需要写在 `extract` 前后各一次。）
 
 PROCESS
 
@@ -182,7 +182,7 @@ HERO
 
 **CiteGuard extracts identifiers from papers and issue reports, queries the relevant registries, and keeps each result with its evidence link and source location.**
 
-`v0.8.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
+`v0.9.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
 
 [Use cases](#use-cases) · [Architecture](#architecture) · [Install](#install) · [Offline quickstart](#offline-quickstart) · [Verification](#network-verification-and-output) · [CI](#ci-integration) · [Configuration](#configuration) · [Scope](#current-scope-and-next-directions)
 
@@ -220,13 +220,13 @@ Create the complete input first. These illustrative identifiers are used to demo
 CREATE_INPUT
 ```
 
-Use this working v0.8.0 invocation:
+As of v0.9.0 the documented short form works directly:
 
 ```bash
 EXTRACT
 ```
 
-The v0.8.0 command group parses a top-level `PATH` before the subcommand, so the path appears both before and after `extract`. The shorter `citeguard extract examples/identifiers.md` is misparsed as an unknown subcommand. The invocation above reaches the existing extractor without changing source code.
+(Releases before v0.9.0 parsed a top-level `PATH` before the subcommand, so the path had to appear both before and after `extract`.)
 
 PROCESS
 
@@ -384,7 +384,7 @@ site = {
     "lang": {"primary": "zh", "toggle": True},
     "meta": {
         "visual_profile": "neon-particle",
-        "content_version": "0.8.0",
+        "content_version": "0.9.0",
         "demo_source": "docs/demo-results.json",
     },
     "hero": {
@@ -503,10 +503,10 @@ site = {
         ],
         "details": [
             {
-                "title": pair("v0.8.0 的 extract 调用形式", "The v0.8.0 extract invocation"),
+                "title": pair("v0.9.0 的 extract 调用形式", "The v0.9.0 extract invocation"),
                 "body": pair(
-                    "当前命令组会先吃掉一个顶层 PATH，再解析 extract 子命令。离线示例把同一路径写在两处；普通 citeguard extract PATH 会被误解析。",
-                    "The command group consumes a top-level PATH before parsing extract. The offline example supplies that path twice; the shorter citeguard extract PATH form is misparsed.",
+                    "v0.9.0 起文档中的 citeguard extract PATH 短形式可以直达子命令，不再需要把顶层 PATH 写在前面。",
+                    "As of v0.9.0 the documented citeguard extract PATH form dispatches directly; releases before v0.9.0 required a top-level PATH before the subcommand.",
                 ),
                 "code": steps[0]["command"],
             },
@@ -531,8 +531,8 @@ site = {
     "demo": {
         "title": pair("三个离线输入，查看原始 CLI 输出", "Three offline inputs, actual CLI output"),
         "note": pair(
-            "以下为 CiteGuard v0.8.0 的实际抽取结果：5、2、2 个标识符。输入是可复制的示例文本；没有查询 registry，也没有用 mock 生成核验状态。",
-            "These are actual CiteGuard v0.8.0 extraction outputs: five, two and two identifiers. Inputs are reproducible example text. No registries were queried and no mock verification statuses were produced.",
+            "以下为 CiteGuard v0.9.0 的实际抽取结果：5、2、2 个标识符。输入是可复制的示例文本；没有查询 registry，也没有用 mock 生成核验状态。",
+            "These are actual CiteGuard v0.9.0 extraction outputs: five, two and two identifiers. Inputs are reproducible example text. No registries were queried and no mock verification statuses were produced.",
         ),
         "source": "/assets/demo-results.json",
         "steps": [
@@ -550,8 +550,8 @@ site = {
     "quickstart": {
         "title": pair("从完整输入开始", "Start with complete input"),
         "body": pair(
-            "需要 Python 3.11+。安装需要网络，随后只执行本地抽取。该调用形式包含 v0.8.0 所需的顶层 PATH。",
-            "Requires Python 3.11+. Installation needs network access; the following extraction is local. The invocation includes the top-level PATH required by v0.8.0.",
+            "需要 Python 3.11+。安装需要网络，随后只执行本地抽取。",
+            "Requires Python 3.11+. Installation needs network access; the following extraction is local.",
         ),
         "steps": [
             {"title": pair("从源码安装", "Install from source"), "code": install},
@@ -577,7 +577,7 @@ site = {
         ),
     ],
     "footer": {
-        "tag": pair("v0.8.0 · Python 3.11+ · Apache-2.0", "v0.8.0 · Python 3.11+ · Apache-2.0")
+        "tag": pair("v0.9.0 · Python 3.11+ · Apache-2.0", "v0.9.0 · Python 3.11+ · Apache-2.0")
     },
 }
 # `host` (custom-domain) and `palette` are deployment-side keys: carry them over
