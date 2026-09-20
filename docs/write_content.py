@@ -1,18 +1,31 @@
 """Write CiteGuard presentation content from the saved CLI record."""
-from pathlib import Path
-import json,shutil
-ROOT=Path(__file__).resolve().parent.parent
-record=json.loads((ROOT/'docs/demo-results.json').read_text())
-steps=record['steps']
-seed=json.loads((ROOT/'web/site.json').read_text())
-example=next(item['text'] for item in record['inputs'] if item['path']=='examples/identifiers.md')
-install='git clone https://github.com/SuperMarioYL/citeguard.git\ncd citeguard\npython3 -m venv .venv\nsource .venv/bin/activate\npython -m pip install -e .'
-create_input="mkdir -p examples\ncat > examples/identifiers.md <<'CITEGUARD_INPUT'\n"+example+"CITEGUARD_INPUT"
-network='citeguard --json report.json --md report.md examples/identifiers.md'
-ci="printf '%s\\n' examples/identifiers.md > changed.txt\nciteguard --changed-only changed.txt --fail-on miss --max-misses 0 --summary-out summary.md"
-pair=lambda zh,en:{'zh':zh,'en':en}
 
-def picture(name,alt):
+import json
+import shutil
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+record = json.loads((ROOT / "docs/demo-results.json").read_text())
+steps = record["steps"]
+seed = json.loads((ROOT / "web/site.json").read_text())
+example = next(
+    item["text"] for item in record["inputs"] if item["path"] == "examples/identifiers.md"
+)
+install = "git clone https://github.com/SuperMarioYL/citeguard.git\ncd citeguard\npython3 -m venv .venv\nsource .venv/bin/activate\npython -m pip install -e ."
+create_input = (
+    "mkdir -p examples\ncat > examples/identifiers.md <<'CITEGUARD_INPUT'\n"
+    + example
+    + "CITEGUARD_INPUT"
+)
+network = "citeguard --json report.json --md report.md examples/identifiers.md"
+ci = "printf '%s\\n' examples/identifiers.md > changed.txt\nciteguard --changed-only changed.txt --fail-on miss --max-misses 0 --summary-out summary.md"
+
+
+def pair(zh, en):
+    return {"zh": zh, "en": en}
+
+
+def picture(name, alt):
     return f'''<picture>
   <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/{name}-mobile-dark.svg">
   <source media="(max-width: 640px)" srcset="assets/{name}-mobile-light.svg">
@@ -20,7 +33,8 @@ def picture(name,alt):
   <img src="assets/{name}-light.svg" width="920" alt="{alt}">
 </picture>'''
 
-zh='''[English](README.en.md) | **简体中文**
+
+zh = """[English](README.en.md) | **简体中文**
 
 HERO
 
@@ -161,8 +175,8 @@ v0.8.0 已有五类标识符抽取、registry resolver、缓存、报告、CI �
 ## 许可证
 
 [Apache-2.0](LICENSE) · [源码与问题反馈](https://github.com/SuperMarioYL/citeguard)
-'''
-en='''**English** | [简体中文](README.md)
+"""
+en = """**English** | [简体中文](README.md)
 
 HERO
 
@@ -303,47 +317,273 @@ Development commands and dependencies are defined in [pyproject.toml](pyproject.
 ## License
 
 [Apache-2.0](LICENSE) · [Source and issues](https://github.com/SuperMarioYL/citeguard)
-'''
-for name,body,alts in [('README.md',zh,{'hero':'CiteGuard 引用括号盾牌与汇聚粒子：核验引用，保留证据。','architecture':'离线抽取生成 Citation，联网 resolver 查询 registry，缓存和报告保留结果及原文上下文。','process':'7 行输入抽取出 5 个唯一标识符，显示完整标识符与原文行号，未执行 registry 查询。','integrations':'五类标识符的 registry 路由，以及文档输入、JSON、Markdown 和 GitHub Action 输出。'}),('README.en.md',en,{'hero':'CiteGuard citation shield and converging particles: check references, keep the evidence.','architecture':'Offline extraction creates Citation objects; network resolvers query registries; caching and reports retain results and source context.','process':'Seven input lines yield five unique identifiers with complete values and source line numbers, without registry queries.','integrations':'Registry routes for five identifier types, document inputs, JSON and Markdown reports, and the GitHub Action.'})]:
-    for group in ['hero','architecture','process','integrations']: body=body.replace(group.upper(),picture(group,alts[group]))
-    for marker,value in [('INSTALL',install),('CREATE_INPUT',create_input),('EXTRACT_OUTPUT',steps[0]['output'].rstrip('\n')),('EXTRACT',steps[0]['command']),('NETWORK',network),('CI_COMMAND',ci)]: body=body.replace(marker,value)
-    (ROOT/name).write_text(body)
+"""
+for name, body, alts in [
+    (
+        "README.md",
+        zh,
+        {
+            "hero": "CiteGuard 引用括号盾牌与汇聚粒子：核验引用，保留证据。",
+            "architecture": "离线抽取生成 Citation，联网 resolver 查询 registry，缓存和报告保留结果及原文上下文。",
+            "process": "7 行输入抽取出 5 个唯一标识符，显示完整标识符与原文行号，未执行 registry 查询。",
+            "integrations": "五类标识符的 registry 路由，以及文档输入、JSON、Markdown 和 GitHub Action 输出。",
+        },
+    ),
+    (
+        "README.en.md",
+        en,
+        {
+            "hero": "CiteGuard citation shield and converging particles: check references, keep the evidence.",
+            "architecture": "Offline extraction creates Citation objects; network resolvers query registries; caching and reports retain results and source context.",
+            "process": "Seven input lines yield five unique identifiers with complete values and source line numbers, without registry queries.",
+            "integrations": "Registry routes for five identifier types, document inputs, JSON and Markdown reports, and the GitHub Action.",
+        },
+    ),
+]:
+    for group in ["hero", "architecture", "process", "integrations"]:
+        body = body.replace(group.upper(), picture(group, alts[group]))
+    for marker, value in [
+        ("INSTALL", install),
+        ("CREATE_INPUT", create_input),
+        ("EXTRACT_OUTPUT", steps[0]["output"].rstrip("\n")),
+        ("EXTRACT", steps[0]["command"]),
+        ("NETWORK", network),
+        ("CI_COMMAND", ci),
+    ]:
+        body = body.replace(marker, value)
+    (ROOT / name).write_text(body)
 
-info=[
- ('混合标识符','Mixed identifiers','7 行输入得到 5 个唯一标识符；重复 arXiv 被合并，每个结果保留原文行号。','Seven input lines yield five unique identifiers. Repeated arXiv references collapse, and source line numbers are retained.','process'),
- ('规范化与去重','Normalize and deduplicate','两个大小写不同的 DOI 合为一个；不同版本的 arXiv 也合为一个，共输出 2 条。','DOIs differing only in case collapse, as do arXiv references with different versions: two objects remain.','demo-normalized'),
- ('匹配边界','Respect matching boundaries','DOI 的 #2 片段没有变成 GitHub issue；没有前缀的 40 位哈希未被抽取，结果是 DOI 和一个 issue。','The DOI fragment #2 does not become a GitHub issue. The unanchored 40-character hash is excluded, leaving a DOI and one issue.','demo-boundaries'),
+info = [
+    (
+        "混合标识符",
+        "Mixed identifiers",
+        "7 行输入得到 5 个唯一标识符；重复 arXiv 被合并，每个结果保留原文行号。",
+        "Seven input lines yield five unique identifiers. Repeated arXiv references collapse, and source line numbers are retained.",
+        "process",
+    ),
+    (
+        "规范化与去重",
+        "Normalize and deduplicate",
+        "两个大小写不同的 DOI 合为一个；不同版本的 arXiv 也合为一个，共输出 2 条。",
+        "DOIs differing only in case collapse, as do arXiv references with different versions: two objects remain.",
+        "demo-normalized",
+    ),
+    (
+        "匹配边界",
+        "Respect matching boundaries",
+        "DOI 的 #2 片段没有变成 GitHub issue；没有前缀的 40 位哈希未被抽取，结果是 DOI 和一个 issue。",
+        "The DOI fragment #2 does not become a GitHub issue. The unanchored 40-character hash is excluded, leaving a DOI and one issue.",
+        "demo-boundaries",
+    ),
 ]
-site={'schema':3,'name':'CiteGuard','github':'https://github.com/SuperMarioYL/citeguard','palette':seed.get('palette','auto'),'lang':{'primary':'zh','toggle':True},'meta':{'visual_profile':'neon-particle','content_version':'0.8.0','demo_source':'docs/demo-results.json'},
- 'hero':{'eyebrow':pair('引用核验 · 证据与原文位置','REFERENCE CHECKS · EVIDENCE AND SOURCE CONTEXT'),'headline':pair('核验引用，\n保留证据与出处','Check references.\nKeep the evidence.'),'sub':pair('从论文和问题报告抽取 DOI、arXiv、CVE 和 GitHub 标识符，向对应 registry 查询，保留核验结果和原文位置。','Extract DOI, arXiv, CVE and GitHub identifiers from papers and issue reports, query the appropriate registries, and retain results with source context.'),'href':'#quickstart','cta':pair('运行离线示例','Run the offline example'),'ctaGithub':pair('查看源码','View source')},
- 'scene':{'kind':'neon-graph','caption':pair('从标识符回到原文','FROM IDENTIFIER TO SOURCE'),'fallback':'/assets/scene-dark.svg','fallbackLight':'/assets/scene-light.svg'},
- 'advantages':[
-  {'title':pair('先找出需要核对的内容','Find what needs checking'),'body':pair('确定性抽取五类标识符，保留匹配文本与行号，可先在本地检查输入。','Deterministic extraction finds five identifier types and retains matched text and line numbers for local inspection.')},
-  {'title':pair('结果附带可追溯证据','Keep evidence with the result'),'body':pair('联网结果区分 hit、miss 与 degraded，保存 evidence_url 或原因，方便回到原文复核。','Network results distinguish hit, miss and degraded, with evidence URLs or notes to support source review.')},
-  {'title':pair('把核验接进已有流程','Fit checks into your workflow'),'body':pair('终端、JSON 和 Markdown 报告服务本地使用；GitHub Action 支持 changed files、summary 和 annotation。','Terminal, JSON and Markdown reports serve local workflows; the GitHub Action supports changed files, summaries and annotations.')},
- ],
- 'story':{
-  'intro':{'title':pair('一个看似可信的编号，\n还需要一次有出处的核对。','A plausible identifier\nstill needs a traceable check.'),'body':pair('论文和问题报告中的引用可能包含笔误、缺少上下文，或遇到不可用的 registry。CiteGuard 把抽取、查询和定位放进同一个流程，让你知道找到了什么，也知道哪些结果仍需人工检查。','References in papers and issue reports can have typos, missing context or unavailable registries. CiteGuard combines extraction, lookup and source location so you can inspect what was found and what still needs review.')},
-  'sections':[
-   {'title':pair('抽取标识符，保留原文位置','Extract identifiers with source locations'),'body':pair('先运行无需网络的 extract。示例中的重复 arXiv 合并为一个 ID，Citation 保留规范化值、原始匹配和原文行号。抽取本身不代表引用已被核验。','Start with network-free extraction. Repeated arXiv references collapse to one ID while Citation retains the normalized value, raw match and line number. Extraction is not verification.'),'image':{'light':'/assets/process-light.svg','dark':'/assets/process-dark.svg','alt':pair('离线示例的 5 个唯一标识符及行号。','Five unique identifiers and line numbers from the offline example.')}},
-   {'title':pair('联网查询与本地状态各司其职','Separate lookup from local state'),'body':pair('DOI 查询在 OpenAlex miss 后才回退 Crossref；缓存保留 7 天且不缓存 degraded。网络错误保留无法判定的状态，报告展示证据链接或原因。','DOI checks fall back to Crossref only after an OpenAlex miss. Cache entries last seven days and exclude degraded results. Network problems remain inconclusive, with evidence links or reasons in reports.'),'image':{'light':'/assets/architecture-light.svg','dark':'/assets/architecture-dark.svg','alt':pair('抽取、registry resolver、缓存与报告的数据路径。','Data paths through extraction, registry resolvers, cache and reports.')}},
-   {'title':pair('按标识符类型选择核验路径','Choose the route by identifier type'),'body':pair('五类标识符对应 OpenAlex、Crossref、arXiv、NVD 和 GitHub；文档与 CI 侧共用 Citation 和 VerifyResult。','The five identifier types route to OpenAlex, Crossref, arXiv, NVD and GitHub. Document and CI workflows share Citation and VerifyResult objects.'),'image':{'light':'/assets/integrations-light.svg','dark':'/assets/integrations-dark.svg','alt':pair('标识符类型、registry 路由与输出接入。','Identifier types, registry routes and output integrations.')}},
-  ],
-  'details':[
-   {'title':pair('v0.8.0 的 extract 调用形式','The v0.8.0 extract invocation'),'body':pair('当前命令组会先吃掉一个顶层 PATH，再解析 extract 子命令。离线示例把同一路径写在两处；普通 citeguard extract PATH 会被误解析。','The command group consumes a top-level PATH before parsing extract. The offline example supplies that path twice; the shorter citeguard extract PATH form is misparsed.'),'code':steps[0]['command']},
-   {'title':pair('联网核验的输出','Output from network verification'),'body':pair('默认写入 <input>.citeguard.json，可选择额外 Markdown。hit 表示 registry 返回记录，miss 表示未找到，degraded 表示无法判定。','The default output is <input>.citeguard.json, with optional Markdown. hit means a registry record was found, miss means it was not found, and degraded means no verdict was available.'),'code':network},
-   {'title':pair('CI 阈值和原文行号','CI thresholds and source lines'),'body':pair('changed-only 模式支持 none、miss 和 degraded 三类阈值，以及容许数量。v0.8.0 在有行号时输出对应 annotation；退出码区分通过、超限与用法错误。','Changed-only mode supports none, miss and degraded thresholds plus a tolerated count. v0.8.0 emits line-aware annotations when available, with separate exit codes for pass, threshold failure and usage errors.'),'code':ci},
-  ],
- },
- 'demo':{'title':pair('三个离线输入，查看原始 CLI 输出','Three offline inputs, actual CLI output'),'note':pair('以下为 CiteGuard v0.8.0 的实际抽取结果：5、2、2 个标识符。输入是可复制的示例文本；没有查询 registry，也没有用 mock 生成核验状态。','These are actual CiteGuard v0.8.0 extraction outputs: five, two and two identifiers. Inputs are reproducible example text. No registries were queried and no mock verification statuses were produced.'),'source':'/assets/demo-results.json','steps':[{'label':pair(a,b),'body':pair(c,d),'image':f'/assets/{name}-light.svg','imageDark':f'/assets/{name}-dark.svg','command':step['command'],'output':step['output']} for (a,b,c,d,name),step in zip(info,steps)]},
- 'quickstart':{'title':pair('从完整输入开始','Start with complete input'),'body':pair('需要 Python 3.11+。安装需要网络，随后只执行本地抽取。该调用形式包含 v0.8.0 所需的顶层 PATH。','Requires Python 3.11+. Installation needs network access; the following extraction is local. The invocation includes the top-level PATH required by v0.8.0.'),'steps':[{'title':pair('从源码安装','Install from source'),'code':install},{'title':pair('创建演示输入','Create the demo input'),'code':create_input},{'title':pair('提取标识符与行号','Extract identifiers and line numbers'),'code':steps[0]['command']}]},
- 'limitations':[
-  pair('抽取到标识符不等于 registry 确认存在；核验也不判断论文是否支持某个论点。','Extracting an identifier does not confirm its existence. Verification does not assess whether a paper supports a claim.'),
-  pair('PDF 需要文本层；当前没有 OCR 或 LLM 抽取，普通无标识符书目不保证被识别。','PDFs need a text layer. There is no OCR or LLM extraction, and free-form references without identifiers may not be recognized.'),
-  pair('GitHub commit 核验需要 owner/repo；网络超时或缺少上下文会导致 degraded。','GitHub commit verification needs owner/repo context; timeouts or missing context can yield degraded.'),
- ],
- 'footer':{'tag':pair('v0.8.0 · Python 3.11+ · Apache-2.0','v0.8.0 · Python 3.11+ · Apache-2.0')},
+site = {
+    "schema": 3,
+    "name": "CiteGuard",
+    "github": "https://github.com/SuperMarioYL/citeguard",
+    "palette": seed.get("palette", "auto"),
+    "lang": {"primary": "zh", "toggle": True},
+    "meta": {
+        "visual_profile": "neon-particle",
+        "content_version": "0.8.0",
+        "demo_source": "docs/demo-results.json",
+    },
+    "hero": {
+        "eyebrow": pair(
+            "引用核验 · 证据与原文位置", "REFERENCE CHECKS · EVIDENCE AND SOURCE CONTEXT"
+        ),
+        "headline": pair("核验引用，\n保留证据与出处", "Check references.\nKeep the evidence."),
+        "sub": pair(
+            "从论文和问题报告抽取 DOI、arXiv、CVE 和 GitHub 标识符，向对应 registry 查询，保留核验结果和原文位置。",
+            "Extract DOI, arXiv, CVE and GitHub identifiers from papers and issue reports, query the appropriate registries, and retain results with source context.",
+        ),
+        "href": "#quickstart",
+        "cta": pair("运行离线示例", "Run the offline example"),
+        "ctaGithub": pair("查看源码", "View source"),
+    },
+    "scene": {
+        "kind": "neon-graph",
+        "caption": pair("从标识符回到原文", "FROM IDENTIFIER TO SOURCE"),
+        "fallback": "/assets/scene-dark.svg",
+        "fallbackLight": "/assets/scene-light.svg",
+    },
+    "advantages": [
+        {
+            "title": pair("先找出需要核对的内容", "Find what needs checking"),
+            "body": pair(
+                "确定性抽取五类标识符，保留匹配文本与行号，可先在本地检查输入。",
+                "Deterministic extraction finds five identifier types and retains matched text and line numbers for local inspection.",
+            ),
+        },
+        {
+            "title": pair("结果附带可追溯证据", "Keep evidence with the result"),
+            "body": pair(
+                "联网结果区分 hit、miss 与 degraded，保存 evidence_url 或原因，方便回到原文复核。",
+                "Network results distinguish hit, miss and degraded, with evidence URLs or notes to support source review.",
+            ),
+        },
+        {
+            "title": pair("把核验接进已有流程", "Fit checks into your workflow"),
+            "body": pair(
+                "终端、JSON 和 Markdown 报告服务本地使用；GitHub Action 支持 changed files、summary 和 annotation。",
+                "Terminal, JSON and Markdown reports serve local workflows; the GitHub Action supports changed files, summaries and annotations.",
+            ),
+        },
+    ],
+    "story": {
+        "intro": {
+            "title": pair(
+                "一个看似可信的编号，\n还需要一次有出处的核对。",
+                "A plausible identifier\nstill needs a traceable check.",
+            ),
+            "body": pair(
+                "论文和问题报告中的引用可能包含笔误、缺少上下文，或遇到不可用的 registry。CiteGuard 把抽取、查询和定位放进同一个流程，让你知道找到了什么，也知道哪些结果仍需人工检查。",
+                "References in papers and issue reports can have typos, missing context or unavailable registries. CiteGuard combines extraction, lookup and source location so you can inspect what was found and what still needs review.",
+            ),
+        },
+        "sections": [
+            {
+                "title": pair(
+                    "抽取标识符，保留原文位置", "Extract identifiers with source locations"
+                ),
+                "body": pair(
+                    "先运行无需网络的 extract。示例中的重复 arXiv 合并为一个 ID，Citation 保留规范化值、原始匹配和原文行号。抽取本身不代表引用已被核验。",
+                    "Start with network-free extraction. Repeated arXiv references collapse to one ID while Citation retains the normalized value, raw match and line number. Extraction is not verification.",
+                ),
+                "image": {
+                    "light": "/assets/process-light.svg",
+                    "dark": "/assets/process-dark.svg",
+                    "alt": pair(
+                        "离线示例的 5 个唯一标识符及行号。",
+                        "Five unique identifiers and line numbers from the offline example.",
+                    ),
+                    "mobile": {
+                        "light": "/assets/process-mobile-light.svg",
+                        "dark": "/assets/process-mobile-dark.svg",
+                    },
+                },
+            },
+            {
+                "title": pair("联网查询与本地状态各司其职", "Separate lookup from local state"),
+                "body": pair(
+                    "DOI 查询在 OpenAlex miss 后才回退 Crossref；缓存保留 7 天且不缓存 degraded。网络错误保留无法判定的状态，报告展示证据链接或原因。",
+                    "DOI checks fall back to Crossref only after an OpenAlex miss. Cache entries last seven days and exclude degraded results. Network problems remain inconclusive, with evidence links or reasons in reports.",
+                ),
+                "image": {
+                    "light": "/assets/architecture-light.svg",
+                    "dark": "/assets/architecture-dark.svg",
+                    "alt": pair(
+                        "抽取、registry resolver、缓存与报告的数据路径。",
+                        "Data paths through extraction, registry resolvers, cache and reports.",
+                    ),
+                    "mobile": {
+                        "light": "/assets/architecture-mobile-light.svg",
+                        "dark": "/assets/architecture-mobile-dark.svg",
+                    },
+                },
+            },
+            {
+                "title": pair("按标识符类型选择核验路径", "Choose the route by identifier type"),
+                "body": pair(
+                    "五类标识符对应 OpenAlex、Crossref、arXiv、NVD 和 GitHub；文档与 CI 侧共用 Citation 和 VerifyResult。",
+                    "The five identifier types route to OpenAlex, Crossref, arXiv, NVD and GitHub. Document and CI workflows share Citation and VerifyResult objects.",
+                ),
+                "image": {
+                    "light": "/assets/integrations-light.svg",
+                    "dark": "/assets/integrations-dark.svg",
+                    "alt": pair(
+                        "标识符类型、registry 路由与输出接入。",
+                        "Identifier types, registry routes and output integrations.",
+                    ),
+                    "mobile": {
+                        "light": "/assets/integrations-mobile-light.svg",
+                        "dark": "/assets/integrations-mobile-dark.svg",
+                    },
+                },
+            },
+        ],
+        "details": [
+            {
+                "title": pair("v0.8.0 的 extract 调用形式", "The v0.8.0 extract invocation"),
+                "body": pair(
+                    "当前命令组会先吃掉一个顶层 PATH，再解析 extract 子命令。离线示例把同一路径写在两处；普通 citeguard extract PATH 会被误解析。",
+                    "The command group consumes a top-level PATH before parsing extract. The offline example supplies that path twice; the shorter citeguard extract PATH form is misparsed.",
+                ),
+                "code": steps[0]["command"],
+            },
+            {
+                "title": pair("联网核验的输出", "Output from network verification"),
+                "body": pair(
+                    "默认写入 <input>.citeguard.json，可选择额外 Markdown。hit 表示 registry 返回记录，miss 表示未找到，degraded 表示无法判定。",
+                    "The default output is <input>.citeguard.json, with optional Markdown. hit means a registry record was found, miss means it was not found, and degraded means no verdict was available.",
+                ),
+                "code": network,
+            },
+            {
+                "title": pair("CI 阈值和原文行号", "CI thresholds and source lines"),
+                "body": pair(
+                    "changed-only 模式支持 none、miss 和 degraded 三类阈值，以及容许数量。v0.8.0 在有行号时输出对应 annotation；退出码区分通过、超限与用法错误。",
+                    "Changed-only mode supports none, miss and degraded thresholds plus a tolerated count. v0.8.0 emits line-aware annotations when available, with separate exit codes for pass, threshold failure and usage errors.",
+                ),
+                "code": ci,
+            },
+        ],
+    },
+    "demo": {
+        "title": pair("三个离线输入，查看原始 CLI 输出", "Three offline inputs, actual CLI output"),
+        "note": pair(
+            "以下为 CiteGuard v0.8.0 的实际抽取结果：5、2、2 个标识符。输入是可复制的示例文本；没有查询 registry，也没有用 mock 生成核验状态。",
+            "These are actual CiteGuard v0.8.0 extraction outputs: five, two and two identifiers. Inputs are reproducible example text. No registries were queried and no mock verification statuses were produced.",
+        ),
+        "source": "/assets/demo-results.json",
+        "steps": [
+            {
+                "label": pair(a, b),
+                "body": pair(c, d),
+                "image": f"/assets/{name}-light.svg",
+                "imageDark": f"/assets/{name}-dark.svg",
+                "command": step["command"],
+                "output": step["output"],
+            }
+            for (a, b, c, d, name), step in zip(info, steps, strict=False)
+        ],
+    },
+    "quickstart": {
+        "title": pair("从完整输入开始", "Start with complete input"),
+        "body": pair(
+            "需要 Python 3.11+。安装需要网络，随后只执行本地抽取。该调用形式包含 v0.8.0 所需的顶层 PATH。",
+            "Requires Python 3.11+. Installation needs network access; the following extraction is local. The invocation includes the top-level PATH required by v0.8.0.",
+        ),
+        "steps": [
+            {"title": pair("从源码安装", "Install from source"), "code": install},
+            {"title": pair("创建演示输入", "Create the demo input"), "code": create_input},
+            {
+                "title": pair("提取标识符与行号", "Extract identifiers and line numbers"),
+                "code": steps[0]["command"],
+            },
+        ],
+    },
+    "limitations": [
+        pair(
+            "抽取到标识符不等于 registry 确认存在；核验也不判断论文是否支持某个论点。",
+            "Extracting an identifier does not confirm its existence. Verification does not assess whether a paper supports a claim.",
+        ),
+        pair(
+            "PDF 需要文本层；当前没有 OCR 或 LLM 抽取，普通无标识符书目不保证被识别。",
+            "PDFs need a text layer. There is no OCR or LLM extraction, and free-form references without identifiers may not be recognized.",
+        ),
+        pair(
+            "GitHub commit 核验需要 owner/repo；网络超时或缺少上下文会导致 degraded。",
+            "GitHub commit verification needs owner/repo context; timeouts or missing context can yield degraded.",
+        ),
+    ],
+    "footer": {
+        "tag": pair("v0.8.0 · Python 3.11+ · Apache-2.0", "v0.8.0 · Python 3.11+ · Apache-2.0")
+    },
 }
-(ROOT/'web/site.json').write_text(json.dumps(site,ensure_ascii=False,indent=2)+'\n')
-shutil.copy2(ROOT/'docs/demo-results.json',ROOT/'web/assets/demo-results.json')
-print('Wrote full bilingual CiteGuard content and three exact public demo steps.')
+# `host` (custom-domain) and `palette` are deployment-side keys: carry them over
+# from the current site.json instead of hardcoding them here.
+if seed.get("host"):
+    site["host"] = seed["host"]
+(ROOT / "web/site.json").write_text(json.dumps(site, ensure_ascii=False, indent=2) + "\n")
+shutil.copy2(ROOT / "docs/demo-results.json", ROOT / "web/assets/demo-results.json")
+print("Wrote full bilingual CiteGuard content and three exact public demo steps.")
