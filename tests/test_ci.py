@@ -393,3 +393,32 @@ def test_no_stale_citeguard_action_pin_in_consumer_facing_files():
         body = (_REPO_ROOT / rel).read_text(encoding="utf-8")
         stale = [m.group(0) for m in pin.finditer(body) if m.group(0) != expected]
         assert not stale, f"stale citeguard action pin in {rel}: {stale}"
+
+
+# ---------- v0.9.0: fix-cli-subcommand-dispatch ----------------------------
+#
+# ``citeguard extract PATH`` / ``citeguard verify PATH`` are documented
+# sub-command forms, but click parses the group's own parameters before
+# resolving the sub-command: the optional ``[PATH]`` argument swallowed the
+# literal ``extract`` token and the file argument was then rejected as
+# "No such command" (exit 2).  Verified on click 8.1.8 and 8.5.0 — the forms
+# never worked.  The group now skips the PATH argument when the first raw
+# argument names a real sub-command.
+
+
+def test_cli_dispatches_documented_extract_subcommand():
+    runner = CliRunner()
+    result = runner.invoke(cli_main, ["extract", str(FIXTURES / "bug_report.md")])
+    assert result.exit_code == 0
+    # m1 contract: structured citations as JSON, no network.
+    assert '"kind":"cve"' in result.output
+
+
+def test_cli_default_form_still_consumes_path():
+    # Regression guard for the skip-path: without a sub-command token the
+    # default `citeguard PATH` form must keep consuming PATH (usage error, not
+    # "No such command").
+    runner = CliRunner()
+    result = runner.invoke(cli_main, ["/path/that/definitely/does/not/exist.pdf"])
+    assert result.exit_code == ci_mod.EXIT_USAGE
+    assert "does not exist" in result.output

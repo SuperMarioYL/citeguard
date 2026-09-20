@@ -40,6 +40,31 @@ _CONSOLE = Console()
 _DEFAULT_CI_GLOB = "**/*.pdf,**/*.tex,**/*.md"
 
 
+class _CiteGuardGroup(click.Group):
+    """click group whose optional ``[PATH]`` argument never swallows a sub-command.
+
+    ``citeguard extract PATH`` / ``citeguard verify PATH`` are documented
+    sub-command forms, but click parses the group's own parameters before
+    resolving the sub-command, so the optional ``[PATH]`` argument consumed the
+    literal ``extract`` / ``verify`` token and the file argument was then
+    rejected as ``No such command '<path>'`` (exit 2).  When the first raw
+    argument names a real sub-command, parse without the ``PATH`` argument so
+    normal sub-command dispatch applies; the default ``citeguard PATH`` form is
+    untouched.
+    """
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        if args and args[0] in self.commands:
+            path_param = next(p for p in self.params if p.name == "path")
+            idx = self.params.index(path_param)
+            self.params.pop(idx)
+            try:
+                return super().parse_args(ctx, args)
+            finally:
+                self.params.insert(idx, path_param)
+        return super().parse_args(ctx, args)
+
+
 def _pick_resolver(citation: Citation):
     """Map :class:`Citation` kind → resolver coroutine."""
     if citation.kind == "doi":
@@ -59,7 +84,15 @@ async def _verify_one(
     if cache is not None:
         cached = cache.get(citation.kind, citation.identifier)
         if cached is not None:
-            return cached
+            # The cache memoises the (kind, identifier) -> registry verdict.  The
+            # cached result embeds the FIRST occurrence's citation, whose
+            # context_span points at whatever file/line it was first verified
+            # from — serving it verbatim would anchor a second occurrence (same
+            # identifier in another changed file in CI mode, or a later run on a
+            # different document) to the wrong file and line.  Re-attach the
+            # citation actually being verified so the per-occurrence location
+            # stays correct while the registry verdict is reused.
+            return cached.model_copy(update={"citation": citation})
     resolver = _pick_resolver(citation)
     if resolver is None:
         return VerifyResult(
@@ -115,7 +148,7 @@ async def _verify_batch(
         return await asyncio.gather(*(_bounded(c) for c in citations))
 
 
-@click.group(invoke_without_command=True)
+@click.group(cls=_CiteGuardGroup, invoke_without_command=True)
 @click.argument(
     "path", required=False, type=click.Path(exists=False, dir_okay=False, path_type=Path)
 )
@@ -182,17 +215,17 @@ async def _verify_batch(
 @click.pass_context
 def main(
     ctx: click.Context,
-    path: Path | None,
-    json_out: Path | None,
-    md_out: Path | None,
-    no_cache: bool,
-    strict: bool,
-    changed_only: Path | None,
-    fail_on: str,
-    max_misses: int,
-    paths_glob: str,
-    summary_out: Path | None,
-    emit_annotations: bool | None,
+    path: Path | None = None,  # absent from ctx.params when a sub-command dispatch skips PATH
+    json_out: Path | None = None,
+    md_out: Path | None = None,
+    no_cache: bool = False,
+    strict: bool = False,
+    changed_only: Path | None = None,
+    fail_on: str = "none",
+    max_misses: int = 0,
+    paths_glob: str = _DEFAULT_CI_GLOB,
+    summary_out: Path | None = None,
+    emit_annotations: bool | None = None,
 ) -> None:
     """Verify every citation in PATH against real registries.
 

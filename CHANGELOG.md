@@ -4,6 +4,51 @@ All notable changes to CiteGuard will be documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); semver per
 [SemVer 2.0](https://semver.org/).
 
+## [0.9.0] — 2026-09-21
+
+Correctness release.  Three fixes from the autonomous grill's deep read of
+the shipped v0.8.0 source, both empirically reproduced: the registry cache
+served the first occurrence's file and line for a repeat of the same
+identifier, and rich markup inside registry-supplied text was silently
+swallowed by the terminal report.  Both sit directly on CiteGuard's core
+promise — evidence links and source locations stay accurate in CLI and CI
+reports.  No new audience / distribution channel / out-of-scope expansion.
+
+### Fixed
+- **A cache hit now carries the citation actually being verified, not the
+  first occurrence's file and line** (`fix-cache-returns-wrong-file-span`).
+  `RegistryCache` memoises `(kind, identifier) -> VerifyResult`, and the
+  cached payload embeds the first occurrence's `context_span`.  `_verify_one`
+  returned that result verbatim, so when the same identifier appeared in a
+  second changed file (CI mode verifies every changed file in one batch
+  without cross-file dedupe) the workflow-command annotation for it carried
+  the FIRST file's `file=` and `line=` — landing the reviewer's inline
+  annotation on the wrong location.  The same mechanism poisoned the JSON
+  sidecar across runs: a cached identifier first verified from paper1.pdf
+  made paper2.pdf.citeguard.json record a citation pointing at paper1.pdf.
+  The cache hit now reuses the registry verdict (status, registry,
+  evidence_url, nearest matches) but re-attaches the current citation, so
+  each occurrence reports its own location.
+- **Registry-supplied text renders verbatim in the terminal report**
+  (`fix-report-markup-injection`).  `render_terminal` handed the evidence cell
+  to `rich` as a raw string, which rich interprets as console markup: a
+  nearest-match title like "[poster] a study of things" rendered as
+  "a study of things" — the bracketed token was silently consumed, corrupting
+  the "did you mean" hint the user is told to check, and markup-style tokens
+  would restyle the report.  The evidence cell is now built as a plain
+  `rich.text.Text` (markup disabled), with the degraded note keeping its
+  yellow emphasis via the `Text` style instead of an inline wrapper, so
+  registry output appears exactly as returned.
+- **The documented `citeguard extract PATH` / `citeguard verify PATH`
+  sub-command forms now work** (`fix-cli-subcommand-dispatch`).  The click
+  group's optional `[PATH]` argument was parsed before sub-command
+  resolution, so it swallowed the literal `extract` / `verify` token and the
+  file argument was then rejected with "No such command" (exit 2) — the
+  documented forms never worked, verified on click 8.1.8 and 8.5.0.  The
+  group now skips the `PATH` argument when the first raw argument names a
+  real sub-command; the default `citeguard PATH` form and the
+  `--changed-only` CI form are untouched.
+
 ## [0.8.0] — 2026-09-05
 
 Correctness + release-hygiene release.  v0.7.0 itself shipped with every

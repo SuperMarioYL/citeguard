@@ -36,14 +36,23 @@ def render_terminal(results: Iterable[VerifyResult], console: Console | None = N
 
     for r in results:
         glyph = Text(_STATUS_GLYPH[r.status], style=_STATUS_STYLE[r.status])
-        evidence = r.evidence_url or ""
+        # Evidence cells carry registry-supplied text (nearest-match titles,
+        # degraded notes that embed exception strings).  Handing that to rich as
+        # a raw string means it is interpreted as console markup: a title like
+        # "[poster] a study of things" silently loses the bracketed token, and
+        # markup-style tokens would restyle the report.  Build a plain Text so
+        # registry output renders verbatim; the degraded note keeps its yellow
+        # emphasis via the Text style rather than an inline markup wrapper.
+        evidence = Text(r.evidence_url or "")
         if r.status == "miss" and r.nearest_matches:
-            evidence = "\n".join(
-                f"≈ {_shorten(m.title, 40)}  ({m.identifier})  d={m.distance}"
-                for m in r.nearest_matches
+            evidence = Text(
+                "\n".join(
+                    f"≈ {_shorten(m.title, 40)}  ({m.identifier})  d={m.distance}"
+                    for m in r.nearest_matches
+                )
             )
         if r.status == "degraded" and r.note:
-            evidence = f"[yellow]{r.note}[/yellow]"
+            evidence = Text(r.note, style="yellow")
         table.add_row(glyph, r.citation.kind, r.citation.identifier, r.registry, evidence)
 
     console.print(table)

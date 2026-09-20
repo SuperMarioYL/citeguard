@@ -12,12 +12,14 @@ from pathlib import Path
 
 import httpx
 import pytest
+from rich.console import Console
 
 from citeguard import __version__
+from citeguard import cli as cli_mod
 from citeguard.cli import _verify_one
 from citeguard.extract import extract_citations, extract_from_path
-from citeguard.models import Citation, NearestMatch, VerifyResult
-from citeguard.report import to_json, to_markdown
+from citeguard.models import Citation, ContextSpan, NearestMatch, VerifyResult
+from citeguard.report import render_terminal, to_json, to_markdown
 from citeguard.resolvers import RegistryCache
 from citeguard.resolvers import arxiv as arxiv_resolver
 from citeguard.resolvers import crossref as crossref_resolver
@@ -569,3 +571,149 @@ async def test_verify_one_survives_cache_failure(tmp_path):
     # The corrupt cache must not abort the verify; the citation is still resolved.
     assert out is not None
     assert out.status == "hit"
+
+
+# ---------- v0.9.0: fix-cache-returns-wrong-file-span ---------------------
+#
+# RegistryCache memoises (kind, identifier) -> VerifyResult, and the cached
+# payload embeds the FIRST occurrence's citation with its context_span
+# (file/line).  _verify_one returned that result verbatim, so a second
+# occurrence of the same identifier — another changed file in CI mode, or a
+# later run on a different document — was annotated (file=/line=) and exported
+# (sidecar context_span) under the first occurrence's location.  The cache now
+# reuses the registry verdict but re-attaches the citation actually being
+# verified.
+
+
+@pytest.mark.asyncio
+async def test_cache_hit_keeps_cached_verdict_but_current_span(tmp_path):
+    cache = RegistryCache(path=tmp_path / "cache.db")
+    cite_a = Citation(
+        raw_text="10.1234/abc",
+        kind="doi",
+        identifier="10.1234/abc",
+        context_span=ContextSpan(file="paper_a.md", start=0, end=11, line=5),
+    )
+    cache.put(
+        VerifyResult(
+            citation=cite_a,
+            status="hit",
+            registry="openalex",
+            evidence_url="https://openalex.org/W1",
+        )
+    )
+    cite_b = Citation(
+        raw_text="10.1234/abc",
+        kind="doi",
+        identifier="10.1234/abc",
+        context_span=ContextSpan(file="paper_b.md", start=3, end=14, line=9),
+    )
+
+    async def unexpected_live_call(client, citation):  # pragma: no cover
+        raise AssertionError("live resolver must not run for a cached identifier")
+
+    async with httpx.AsyncClient() as client:
+        original_pick = cli_mod._pick_resolver
+        cli_mod._pick_resolver = lambda c: unexpected_live_call
+        try:
+            result = await _verify_one(client, cache, cite_b)
+        finally:
+            cli_mod._pick_resolver = original_pick
+
+    # Registry verdict reused from the cache…
+    assert result.status == "hit"
+    assert result.registry == "openalex"
+    assert result.evidence_url == "https://openalex.org/W1"
+    # …but the location must be THIS occurrence's, not the cached one's.
+    assert result.citation.context_span.file == "paper_b.md"
+    assert result.citation.context_span.line == 9
+
+
+@pytest.mark.asyncio
+async def test_same_identifier_in_two_files_keeps_own_span(tmp_path, monkeypatch):
+    """The CI-batch scenario: two changed files citing the same DOI.
+
+    Both citations flow through _verify_one (as in _run_ci's cross-file batch);
+    each must come back annotated with its own file and line while the second
+    reuses the first's registry verdict from the cache.
+    """
+    cache = RegistryCache(path=tmp_path / "cache.db")
+    cite_a = Citation(
+        raw_text="10.1234/abc",
+        kind="doi",
+        identifier="10.1234/abc",
+        context_span=ContextSpan(file="paper_a.md", start=0, end=11, line=1),
+    )
+    cite_b = Citation(
+        raw_text="10.1234/abc",
+        kind="doi",
+        identifier="10.1234/abc",
+        context_span=ContextSpan(file="paper_b.md", start=0, end=11, line=4),
+    )
+
+    async def fake_verify(client, citation):
+        return VerifyResult(citation=citation, status="hit", registry="openalex", evidence_url="u")
+
+    monkeypatch.setattr(cli_mod, "_pick_resolver", lambda c: fake_verify)
+    async with httpx.AsyncClient() as client:
+        res_a = await _verify_one(client, cache, cite_a)
+        res_b = await _verify_one(client, cache, cite_b)
+
+    assert res_a.citation.context_span.file == "paper_a.md"
+    assert res_b.citation.context_span.file == "paper_b.md"
+    assert res_b.citation.context_span.line == 4
+    assert res_b.status == "hit"
+
+
+# ---------- v0.9.0: fix-report-markup-injection ---------------------------
+#
+# render_terminal handed registry-supplied evidence (nearest-match titles,
+# degraded notes) to rich as raw strings, which rich interprets as console
+# markup: a nearest-match title like "[poster] a study of things" silently lost
+# the bracketed token (and markup-style tokens would restyle the report).  The
+# evidence cell is now a plain Text, so registry output renders verbatim.
+
+
+def test_render_terminal_shows_bracketed_title_verbatim():
+    console = Console(record=True, width=200, force_terminal=False)
+    citation = Citation(raw_text="10.1/x", kind="doi", identifier="10.1/x")
+    result = VerifyResult(
+        citation=citation,
+        status="miss",
+        registry="openalex",
+        nearest_matches=[
+            NearestMatch(title="[poster] a study of things", identifier="10.9/y", distance=3)
+        ],
+    )
+    render_terminal([result], console=console)
+    text = console.export_text()
+    assert "[poster] a study of things" in text
+
+
+def test_render_terminal_shows_degraded_note_verbatim():
+    console = Console(record=True, width=200, force_terminal=False)
+    citation = Citation(raw_text="10.1/x", kind="doi", identifier="10.1/x")
+    result = VerifyResult(
+        citation=citation,
+        status="degraded",
+        registry="openalex",
+        note="[err] transient outage",
+    )
+    render_terminal([result], console=console)
+    text = console.export_text()
+    assert "[err] transient outage" in text
+
+
+def test_render_terminal_degraded_note_keeps_yellow_style():
+    console = Console(record=True, width=200, force_terminal=True, color_system="standard")
+    citation = Citation(raw_text="10.1/x", kind="doi", identifier="10.1/x")
+    result = VerifyResult(
+        citation=citation,
+        status="degraded",
+        registry="openalex",
+        note="[err] transient outage",
+    )
+    render_terminal([result], console=console)
+    styled = console.export_text(styles=True)
+    assert "[err] transient outage" in styled
+    assert "\x1b[33m" in styled  # standard-color yellow still applied
