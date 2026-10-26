@@ -22,6 +22,20 @@ def _shorten(s: str, n: int = 60) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+def md_cell(text: str) -> str:
+    """Escape one value for a Markdown table cell.
+
+    The Markdown exporters interpolate registry-supplied text (nearest-match
+    titles, degraded notes that embed exception strings) into `|`-delimited
+    rows.  A `|` in that text opens an extra column and a newline ends the row,
+    corrupting the table a reviewer is meant to read — the same untrusted-text
+    problem the terminal renderer already handles by building a plain
+    `rich.text.Text`.  Collapse CR/LF to spaces and backslash-escape pipes so
+    registry output cannot restructure the table.
+    """
+    return text.replace("\r\n", " ").replace("\n", " ").replace("\r", " ").replace("|", "\\|")
+
+
 def render_terminal(results: Iterable[VerifyResult], console: Console | None = None) -> None:
     """Print a `rich` table summarising every :class:`VerifyResult`."""
     console = console or Console()
@@ -100,7 +114,8 @@ def to_markdown(results: Iterable[VerifyResult]) -> str:
         else:
             evidence = r.evidence_url or ""
         lines.append(
-            f"| {glyph} | {r.citation.kind} | `{r.citation.identifier}` | {r.registry} | {evidence} |"
+            f"| {glyph} | {r.citation.kind} | `{md_cell(r.citation.identifier)}`"
+            f" | {md_cell(r.registry)} | {md_cell(evidence)} |"
         )
 
     hit = sum(1 for r in results if r.status == "hit")

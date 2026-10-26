@@ -45,6 +45,20 @@ def _load_check_version():
     return mod
 
 
+def _neutralize_version_surface_checks(cv, tmp_path: Path) -> None:
+    """Point the v0.10.0 README/site surfaces at a temp tree.
+
+    The synthetic trees below model only pyproject / CHANGELOG / ``__init__.py`` /
+    action.yml, so the README-badge and ``web/site.json`` checks must not be
+    compared against the real repository's files.  ``_badge_versions`` and
+    ``_site_content_version`` treat an absent file as "surface not modelled".
+    """
+    cv._README = tmp_path / "README.md"
+    cv._README_EN = tmp_path / "README.en.md"
+    cv._WRITE_CONTENT = tmp_path / "docs" / "write_content.py"
+    cv._SITE = tmp_path / "web" / "site.json"
+
+
 def test_citeguard_version_matches_pyproject():
     """The shipped __version__ must equal the pyproject version (fix #2)."""
     data = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))
@@ -81,6 +95,7 @@ def test_check_version_detects_init_py_drift(tmp_path):
     cv._INIT = init_py
     cv._ACTION = action_yml
     cv._ROOT = tmp_path
+    _neutralize_version_surface_checks(cv, tmp_path)
 
     assert cv.main() == 1, "drifted __init__.py must fail the version gate"
 
@@ -115,6 +130,7 @@ def test_check_version_detects_action_yml_drift(tmp_path):
     cv._INIT = init_py
     cv._ACTION = action_yml
     cv._ROOT = tmp_path
+    _neutralize_version_surface_checks(cv, tmp_path)
 
     assert cv.main() == 1, "drifted action.yml default must fail the version gate"
 
@@ -165,6 +181,7 @@ def test_check_version_detects_release_tag_above_declared(tmp_path):
     cv._INIT = init_py
     cv._ACTION = action_yml
     cv._ROOT = tmp_path
+    _neutralize_version_surface_checks(cv, tmp_path)
 
     assert cv.main() == 1, "a release tag above the declared version must fail the gate"
 
@@ -172,3 +189,91 @@ def test_check_version_detects_release_tag_above_declared(tmp_path):
     subprocess.run(["git", "tag", "-d", "v0.7.0"], cwd=tmp_path, capture_output=True, check=True)
     subprocess.run(["git", "tag", "v0.6.0"], cwd=tmp_path, capture_output=True, check=True)
     assert cv.main() == 0, "aligned versions with no higher tag must pass the gate"
+
+
+def _aligned_synthetic_tree(tmp_path: Path, version: str = "0.6.0"):
+    """Build the pyproject/CHANGELOG/__init__/action.yml quartet at `version`."""
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(f'[project]\nversion = "{version}"\n', encoding="utf-8")
+    changelog = tmp_path / "CHANGELOG.md"
+    changelog.write_text(f"# Changelog\n\n## [{version}] — 2026-08-21\n\nbody\n", encoding="utf-8")
+    init_py = tmp_path / "src" / "citeguard" / "__init__.py"
+    init_py.parent.mkdir(parents=True)
+    init_py.write_text(f'__version__ = "{version}"\n', encoding="utf-8")
+    action_yml = tmp_path / "action.yml"
+    action_yml.write_text(f'inputs:\n  version:\n    default: "{version}"\n', encoding="utf-8")
+    return pyproject, changelog, init_py, action_yml
+
+
+def test_repo_version_surfaces_agree():
+    """Every user-visible version surface in the real repo must agree (v0.10.0).
+
+    Guards the drift class the v0.10.0 gate extension closed: the README badge
+    and ``web/site.json`` ``content_version`` were bumped by hand on every release
+    (v0.8.0 and v0.9.0 each carried a separate site-refresh commit) and neither
+    was watched, so a release could ship with the README and the live site
+    advertising an older version while every gated string was correct.
+    """
+    cv = _load_check_version()
+    py = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))["project"]["version"]
+    assert cv.main() == 0, "the shipped repo's version surfaces must agree"
+
+    for name in ("README.md", "README.en.md", "docs/write_content.py"):
+        badges = cv._badge_versions(_ROOT / name)
+        assert badges, f"{name} must carry a `vX.Y.Z` version badge"
+        assert set(badges) == {py}, f"{name} badge(s) {badges} drift from pyproject {py}"
+
+    assert cv._site_content_version() == py, "web/site.json content_version drifts from pyproject"
+
+
+def test_check_version_detects_readme_badge_drift(tmp_path):
+    """check_version.py must fail when a README version badge drifts (v0.10.0).
+
+    Pre-extension the gate never read the README, so the badge a reader sees
+    first could lag the shipped version while every gated string was correct.
+    """
+    cv = _load_check_version()
+    pyproject, changelog, init_py, action_yml = _aligned_synthetic_tree(tmp_path)
+
+    readme = tmp_path / "README.md"
+    readme.write_text("`v0.5.0` · `Python >= 3.11` · CLI\n", encoding="utf-8")
+
+    cv._PYPROJECT = pyproject
+    cv._CHANGELOG = changelog
+    cv._INIT = init_py
+    cv._ACTION = action_yml
+    cv._ROOT = tmp_path
+    _neutralize_version_surface_checks(cv, tmp_path)
+    cv._README = readme
+
+    assert cv.main() == 1, "a drifted README badge must fail the version gate"
+
+    readme.write_text("`v0.6.0` · `Python >= 3.11` · CLI\n", encoding="utf-8")
+    assert cv.main() == 0, "an aligned README badge must pass the version gate"
+
+
+def test_check_version_detects_site_content_version_drift(tmp_path):
+    """check_version.py must fail when web/site.json content_version drifts (v0.10.0).
+
+    Pre-extension the gate never read site.json, so the deployed site could keep
+    advertising the previous release while the tag and code moved on.
+    """
+    cv = _load_check_version()
+    pyproject, changelog, init_py, action_yml = _aligned_synthetic_tree(tmp_path)
+
+    site = tmp_path / "web" / "site.json"
+    site.parent.mkdir(parents=True)
+    site.write_text('{"meta": {"content_version": "0.5.0"}}\n', encoding="utf-8")
+
+    cv._PYPROJECT = pyproject
+    cv._CHANGELOG = changelog
+    cv._INIT = init_py
+    cv._ACTION = action_yml
+    cv._ROOT = tmp_path
+    _neutralize_version_surface_checks(cv, tmp_path)
+    cv._SITE = site
+
+    assert cv.main() == 1, "a drifted site.json content_version must fail the version gate"
+
+    site.write_text('{"meta": {"content_version": "0.6.0"}}\n', encoding="utf-8")
+    assert cv.main() == 0, "an aligned site.json content_version must pass the version gate"

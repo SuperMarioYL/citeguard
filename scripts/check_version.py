@@ -13,7 +13,13 @@ lagged the CHANGELOG): assert that
   * ``action.yml`` ``version`` input ``default`` equals that same version
     (v0.7.0 extension — closes the drift class where the composite Action
     installed a stale ``citeguard==<old>`` because the gate never watched the
-    Action's pinned default as a fourth version source), and
+    Action's pinned default as a fourth version source),
+  * the README version badge (both languages) and ``web/site.json``
+    ``meta.content_version`` equal that same version (v0.10.0 extension — the
+    two surfaces every prior release bumped by hand, and the two
+    ``docs/write_content.py`` regenerates from hardcoded literals, so neither the
+    deployed site nor the README could be left advertising an older version),
+    and
   * no git tag for a HIGHER version than the declared one exists
     (v0.8.0 extension — closes the "tagged but not bumped" drift class: v0.7.0
     shipped while every version string stayed at 0.6.0 because the gate only
@@ -29,6 +35,7 @@ in the runtime deps and break the stdlib-only contract).
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -40,6 +47,14 @@ _PYPROJECT = _ROOT / "pyproject.toml"
 _CHANGELOG = _ROOT / "CHANGELOG.md"
 _INIT = _ROOT / "src" / "citeguard" / "__init__.py"
 _ACTION = _ROOT / "action.yml"
+# v0.10.0: the deployed-site and README surfaces.  `docs/write_content.py`
+# regenerates the README badges and `web/site.json` from hardcoded literals, so
+# it is watched alongside its outputs — otherwise a hand edit to the README is
+# silently reverted on the next regen.
+_README = _ROOT / "README.md"
+_README_EN = _ROOT / "README.en.md"
+_WRITE_CONTENT = _ROOT / "docs" / "write_content.py"
+_SITE = _ROOT / "web" / "site.json"
 
 # Matches the newest Keep-a-Changelog version heading, e.g. `## [0.4.0] — 2026-06-20`.
 _CHANGELOG_HEADING = re.compile(r"^##\s*\[(\d+\.\d+\.\d+)\]")
@@ -49,6 +64,11 @@ _INIT_VERSION = re.compile(r'^__version__\s*=\s*["\'](\d+\.\d+\.\d+)["\']')
 
 # Matches `default: "X.Y.Z"` (the `version` input default inside action.yml).
 _ACTION_VERSION_DEFAULT = re.compile(r'^\s*default:\s*["\'](\d+\.\d+\.\d+)["\']')
+
+# Matches the README badge line `` `vX.Y.Z` · `Python >= 3.11` · ... `` — the
+# version a reader sees first, and the same literal `docs/write_content.py`
+# emits into both READMEs.
+_BADGE_VERSION = re.compile(r"^`v(\d+\.\d+\.\d+)` ·", re.MULTILINE)
 
 
 def _pyproject_version() -> str:
@@ -98,6 +118,37 @@ def _action_version_default() -> str | None:
             if m:
                 return m.group(1)
     raise SystemExit("check-version: no `version` input default found in action.yml")
+
+
+def _badge_versions(path: Path) -> list[str] | None:
+    """Return every ``vX.Y.Z`` README-badge version in ``path``, or ``None``.
+
+    ``None`` means the file is absent, so synthetic test trees that do not model
+    the README do not trip the gate (best-effort, like the git-tag check).  In a
+    real repo the files always exist, so a file that exists but carries no badge
+    is an error: it means the surface was rewritten in a shape the gate cannot
+    read, which would otherwise let the drift class back in silently.
+    """
+    if not path.exists():
+        return None
+    found = _BADGE_VERSION.findall(path.read_text(encoding="utf-8"))
+    if not found:
+        raise SystemExit(f"check-version: no `vX.Y.Z` version badge found in {path.name}")
+    return found
+
+
+def _site_content_version() -> str | None:
+    """Read ``meta.content_version`` from ``web/site.json``.
+
+    Returns ``None`` when the file is absent (synthetic test trees) or when the
+    key is absent, so a version-agnostic site is not forced to grow one.
+    """
+    if not _SITE.exists():
+        return None
+    data = json.loads(_SITE.read_text(encoding="utf-8"))
+    meta = data.get("meta") or {}
+    version = meta.get("content_version")
+    return version if isinstance(version, str) else None
 
 
 def _git_tag_for(version: str) -> bool:
@@ -193,6 +244,32 @@ def main() -> int:
         )
         return 1
 
+    # v0.10.0: the deployed-site and README surfaces.  Every prior release bumped
+    # these by hand (v0.8.0 and v0.9.0 each carried a separate site-refresh
+    # commit) and none was watched, so the README and the live site could
+    # advertise an older version than the code while the gate stayed green.
+    for path in (_README, _README_EN, _WRITE_CONTENT):
+        badges = _badge_versions(path)
+        if badges is None:
+            continue
+        for badge in badges:
+            if badge != py:
+                print(
+                    f"check-version: DRIFT — {path.name} version badge v{badge!r}"
+                    f" != pyproject version {py!r}",
+                    file=sys.stderr,
+                )
+                return 1
+
+    site = _site_content_version()
+    if site is not None and site != py:
+        print(
+            f"check-version: DRIFT — web/site.json meta.content_version {site!r}"
+            f" != pyproject version {py!r}",
+            file=sys.stderr,
+        )
+        return 1
+
     # v0.8.0: a release tag strictly above the declared version means a release
     # was cut while the version strings were not bumped — the "tagged but not
     # bumped" drift class that let v0.7.0 ship with every string at 0.6.0.
@@ -209,15 +286,11 @@ def main() -> int:
     # If this version is already tagged, the tag must agree (it will, since the
     # tag *is* vX.Y.Z — this guards a manual mis-tag).  A missing tag is fine:
     # the release isn't published yet.
+    surfaces = "pyproject == CHANGELOG == __init__ == action.yml == README == site.json"
     if _git_tag_for(py):
-        print(
-            f"check-version: OK — pyproject == CHANGELOG == __init__ == action.yml"
-            f" == git tag v{py} (no higher tag)"
-        )
+        print(f"check-version: OK — {surfaces} == git tag v{py} (no higher tag)")
     else:
-        print(
-            f"check-version: OK — pyproject == CHANGELOG == __init__ == action.yml == {py} (no tag yet)"
-        )
+        print(f"check-version: OK — {surfaces} == {py} (no tag yet)")
     return 0
 
 

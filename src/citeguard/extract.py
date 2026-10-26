@@ -41,7 +41,10 @@ _ARXIV_NEW_URL_RE = re.compile(
 )
 _ARXIV_OLD_RE = re.compile(r"\barXiv:?\s*([a-z\-]+(?:\.[A-Z]{2})?/\d{7})\b", re.IGNORECASE)
 
-_CVE_RE = re.compile(r"\b(CVE-\d{4}-\d{4,7})\b")
+# Case-insensitive like the other matchers: advisories and bug reports write
+# `cve-2024-3094` as often as `CVE-2024-3094`, and the identifier is normalised
+# to upper case below.  A case-sensitive prefix silently dropped those lines.
+_CVE_RE = re.compile(r"\b(CVE-\d{4}-\d{4,7})\b", re.IGNORECASE)
 
 # A "commit" identifier is a 40-char hex SHA-1 with at least one preceding
 # anchor (the word "commit", "sha", or a GitHub URL).  We refuse bare

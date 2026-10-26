@@ -40,7 +40,7 @@ HERO
 
 **CiteGuard 从论文和问题报告中提取标识符，向对应 registry 查询，并把结果、证据链接和原文位置放到一起。**
 
-`v0.9.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
+`v0.10.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
 
 [用途](#用途) · [架构](#架构) · [安装](#安装) · [离线上手](#离线上手) · [联网核验](#联网核验与输出) · [CI](#接入-ci) · [配置](#配置) · [范围](#当前范围与后续方向)
 
@@ -182,7 +182,7 @@ HERO
 
 **CiteGuard extracts identifiers from papers and issue reports, queries the relevant registries, and keeps each result with its evidence link and source location.**
 
-`v0.9.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
+`v0.10.0` · `Python ≥ 3.11` · `CLI + GitHub Action` · [Apache-2.0](LICENSE)
 
 [Use cases](#use-cases) · [Architecture](#architecture) · [Install](#install) · [Offline quickstart](#offline-quickstart) · [Verification](#network-verification-and-output) · [CI](#ci-integration) · [Configuration](#configuration) · [Scope](#current-scope-and-next-directions)
 
@@ -384,7 +384,7 @@ site = {
     "lang": {"primary": "zh", "toggle": True},
     "meta": {
         "visual_profile": "neon-particle",
-        "content_version": "0.9.0",
+        "content_version": "0.10.0",
         "demo_source": "docs/demo-results.json",
     },
     "hero": {
@@ -577,7 +577,7 @@ site = {
         ),
     ],
     "footer": {
-        "tag": pair("v0.9.0 · Python 3.11+ · Apache-2.0", "v0.9.0 · Python 3.11+ · Apache-2.0")
+        "tag": pair("v0.10.0 · Python 3.11+ · Apache-2.0", "v0.10.0 · Python 3.11+ · Apache-2.0")
     },
 }
 # `host` (custom-domain) and `palette` are deployment-side keys: carry them over

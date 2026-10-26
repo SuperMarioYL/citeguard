@@ -18,6 +18,7 @@ import pytest
 from click.testing import CliRunner
 
 from citeguard import ci as ci_mod
+from citeguard import cli as cli_mod
 from citeguard.cli import main as cli_main
 from citeguard.models import Citation, ContextSpan, NearestMatch, VerifyResult
 
@@ -422,3 +423,118 @@ def test_cli_default_form_still_consumes_path():
     result = runner.invoke(cli_main, ["/path/that/definitely/does/not/exist.pdf"])
     assert result.exit_code == ci_mod.EXIT_USAGE
     assert "does not exist" in result.output
+
+
+# ---------- v0.10.0: fix-io-errors-exit-2 ---------------------------------
+#
+# The documented exit-code contract is 0 pass / 1 threshold / 2 usage-or-IO
+# error, and only the *input* side honoured it (_run_ci already caught OSError
+# around the --changed-only read).  Every output side was unguarded, so an
+# ordinary path mistake raised a traceback and exited 1 — indistinguishable
+# from a threshold failure to the composite Action, whose Enforce step then
+# fell through both guards (failed was never written) and reported a green
+# check.  All five sites now print `error:` and return EXIT_USAGE.
+
+
+def test_cli_ci_summary_out_io_error_exits_usage(tmp_path):
+    # No citations in the changed file -> no network; the failure is the write.
+    clean = tmp_path / "clean.md"
+    clean.write_text("nothing to verify.", encoding="utf-8")
+    diff = _write_diff_file(tmp_path, [str(clean)])
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_main,
+        [
+            "--changed-only",
+            str(diff),
+            "--paths",
+            "**/*.md",
+            "--summary-out",
+            str(tmp_path / "missing" / "summary.md"),
+            "--no-cache",
+        ],
+    )
+    assert result.exit_code == ci_mod.EXIT_USAGE
+    assert "cannot write job summary" in result.output
+
+
+def test_cli_ci_github_output_io_error_exits_usage(tmp_path, monkeypatch):
+    clean = tmp_path / "clean.md"
+    clean.write_text("nothing to verify.", encoding="utf-8")
+    diff = _write_diff_file(tmp_path, [str(clean)])
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "missing" / "gh_output.txt"))
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_main,
+        ["--changed-only", str(diff), "--paths", "**/*.md", "--no-cache"],
+    )
+    assert result.exit_code == ci_mod.EXIT_USAGE
+    assert "cannot write GITHUB_OUTPUT" in result.output
+
+
+def test_cli_ci_unreadable_changed_entry_exits_usage(tmp_path):
+    # A changed-file entry that exists but is a directory is an input I/O error.
+    somedir = tmp_path / "somedir"
+    somedir.mkdir()
+    diff = _write_diff_file(tmp_path, [str(somedir)])
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_main,
+        ["--changed-only", str(diff), "--paths", "", "--no-cache"],
+    )
+    assert result.exit_code == ci_mod.EXIT_USAGE
+    assert "cannot read changed file" in result.output
+
+
+def test_cli_full_json_sidecar_io_error_exits_usage(tmp_path, monkeypatch):
+    paper = tmp_path / "paper.md"
+    paper.write_text("DOI: 10.1145/3460120.\n", encoding="utf-8")
+
+    async def _no_network(citations, cache, concurrency=8):  # noqa: ARG001
+        return []
+
+    monkeypatch.setattr(cli_mod, "_verify_batch", _no_network)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_main,
+        ["--json", str(tmp_path / "missing" / "out.json"), "--no-cache", str(paper)],
+    )
+    assert result.exit_code == ci_mod.EXIT_USAGE
+    assert "cannot write JSON sidecar" in result.output
+
+
+def test_cli_full_markdown_report_io_error_exits_usage(tmp_path, monkeypatch):
+    paper = tmp_path / "paper.md"
+    paper.write_text("DOI: 10.1145/3460120.\n", encoding="utf-8")
+
+    async def _no_network(citations, cache, concurrency=8):  # noqa: ARG001
+        return []
+
+    monkeypatch.setattr(cli_mod, "_verify_batch", _no_network)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_main,
+        ["--md", str(tmp_path / "missing" / "out.md"), "--no-cache", str(paper)],
+    )
+    assert result.exit_code == ci_mod.EXIT_USAGE
+    assert "cannot write Markdown report" in result.output
+
+
+# ---------- v0.10.0: fix-markdown-cell-escaping (job summary) -------------
+
+
+def test_job_summary_escapes_pipe_and_newline_in_degraded_note():
+    result = VerifyResult(
+        citation=Citation(raw_text="10.1/x", kind="doi", identifier="10.1/x"),
+        status="degraded",
+        registry="openalex",
+        note="HTTP error | timeout\nsecond line",
+    )
+    summary = ci_mod.render_job_summary([result], fail_on="degraded", max_misses=0, failed=True)
+    assert "HTTP error \\| timeout second line" in summary
+    assert "\nsecond line" not in summary

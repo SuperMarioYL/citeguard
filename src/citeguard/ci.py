@@ -24,6 +24,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from citeguard.models import VerifyResult
+from citeguard.report import md_cell
 
 FailOn = str  # one of: "none" | "miss" | "degraded"
 
@@ -189,7 +190,8 @@ def render_job_summary(
         else:
             evidence = r.evidence_url or ""
         lines.append(
-            f"| {glyph} | {r.citation.kind} | `{r.citation.identifier}` | {r.registry} | {evidence} |"
+            f"| {glyph} | {r.citation.kind} | `{md_cell(r.citation.identifier)}`"
+            f" | {md_cell(r.registry)} | {md_cell(evidence)} |"
         )
     if not results:
         lines.append("| — | — | _no citations found_ | — | — |")

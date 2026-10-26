@@ -717,3 +717,74 @@ def test_render_terminal_degraded_note_keeps_yellow_style():
     styled = console.export_text(styles=True)
     assert "[err] transient outage" in styled
     assert "\x1b[33m" in styled  # standard-color yellow still applied
+
+
+# ---------- v0.10.0: fix-cve-case-insensitive -----------------------------
+#
+# _CVE_RE was the only identifier matcher in extract.py compiled without
+# re.IGNORECASE, while its own citation builder already called `.upper()` —
+# dead normalisation, because a case-sensitive `CVE-` prefix can never yield a
+# non-uppercase match.  A bug report or advisory writing `cve-2024-3094` (or
+# `Cve-...`) therefore produced zero citations: silently absent from stdout and
+# from the JSON sidecar, never queried, never reported.
+
+
+def test_extract_cve_is_case_insensitive():
+    text = "advisory: cve-2024-3094\nsecond: Cve-2021-44228\n"
+    cites = extract_citations(text, "advisory.md")
+    assert [(c.kind, c.identifier) for c in cites] == [
+        ("cve", "CVE-2024-3094"),
+        ("cve", "CVE-2021-44228"),
+    ]
+    # The reported line is the lowercase occurrence's own line, not the first
+    # uppercase one.
+    assert cites[0].context_span.line == 1
+    assert cites[1].context_span.line == 2
+
+
+def test_extract_cve_case_variants_dedupe_to_canonical_form():
+    cites = extract_citations("CVE-2024-3094\ncve-2024-3094\n", "x.md")
+    assert [(c.kind, c.identifier) for c in cites] == [("cve", "CVE-2024-3094")]
+
+
+# ---------- v0.10.0: fix-markdown-cell-escaping ---------------------------
+#
+# v0.9.0 stopped rich markup in registry-supplied text from restyling the
+# terminal table, but to_markdown / render_job_summary still interpolated
+# nearest-match titles, degraded notes and evidence URLs straight into
+# `|`-delimited rows: a `|` in a title opened an extra column and a newline in
+# a note ended the row and injected a bare line into the table.  The job summary
+# is written to $GITHUB_STEP_SUMMARY and copied into the sticky PR comment.
+
+
+def _miss_with_title(title: str) -> VerifyResult:
+    return VerifyResult(
+        citation=Citation(raw_text="10.1/x", kind="doi", identifier="10.1/x"),
+        status="miss",
+        registry="openalex",
+        nearest_matches=[NearestMatch(title=title, identifier="10.9/y", distance=3)],
+    )
+
+
+def _degraded_with_note(note: str) -> VerifyResult:
+    return VerifyResult(
+        citation=Citation(raw_text="10.1/x", kind="doi", identifier="10.1/x"),
+        status="degraded",
+        registry="openalex",
+        note=note,
+    )
+
+
+def test_to_markdown_escapes_pipe_in_nearest_match_title():
+    md = to_markdown([_miss_with_title("A | B study of things")])
+    assert "≈ A \\| B study of things" in md
+    # The escaped pipe must not split the row into an extra column: five cells
+    # means exactly six *unescaped* pipes (the row delimiters) reach the table.
+    row = next(line for line in md.splitlines() if "study of things" in line)
+    assert row.count("|") - row.count("\\|") == 6
+
+
+def test_to_markdown_collapses_newline_in_degraded_note():
+    md = to_markdown([_degraded_with_note("HTTP error | timeout\nsecond line")])
+    assert "HTTP error \\| timeout second line" in md
+    assert "\nsecond line" not in md

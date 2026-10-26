@@ -306,11 +306,22 @@ def _run_full(
 
     default_json = path.with_suffix(path.suffix + ".citeguard.json")
     target_json = json_out or default_json
-    write_json(results, target_json)
+    # Output writes are I/O like any other: a bad --json/--md path must exit 2
+    # with a clean message (the contract `_run_ci` already honours for its input
+    # read), not raise a traceback and exit 1.
+    try:
+        write_json(results, target_json)
+    except OSError as exc:
+        _CONSOLE.print(f"[red]error:[/red] cannot write JSON sidecar {target_json}: {exc}")
+        sys.exit(ci_mod.EXIT_USAGE)
     _CONSOLE.print(f"[dim]JSON sidecar:[/dim] {target_json}")
 
     if md_out:
-        write_markdown(results, md_out)
+        try:
+            write_markdown(results, md_out)
+        except OSError as exc:
+            _CONSOLE.print(f"[red]error:[/red] cannot write Markdown report {md_out}: {exc}")
+            sys.exit(ci_mod.EXIT_USAGE)
         _CONSOLE.print(f"[dim]Markdown report:[/dim] {md_out}")
 
     if strict and any(r.status == "miss" for r in results):
@@ -345,7 +356,14 @@ def _run_ci(
         if not p.exists():
             skipped_missing.append(rel)
             continue
-        citations.extend(extract_from_path(p))
+        # A changed-file entry that exists but cannot be read (e.g. a directory)
+        # is an I/O error on the input side, same class as the unreadable
+        # --changed-only file handled above.
+        try:
+            citations.extend(extract_from_path(p))
+        except OSError as exc:
+            _CONSOLE.print(f"[red]error:[/red] cannot read changed file {rel}: {exc}")
+            return ci_mod.EXIT_USAGE
 
     if citations:
         cache = None if no_cache else RegistryCache()
@@ -371,18 +389,26 @@ def _run_ci(
         )
         # Append (rather than truncate) so we play nicely with other steps
         # already writing to $GITHUB_STEP_SUMMARY.
-        with open(summary_out, "a", encoding="utf-8") as fh:
-            fh.write(summary_md + "\n")
+        try:
+            with open(summary_out, "a", encoding="utf-8") as fh:
+                fh.write(summary_md + "\n")
+        except OSError as exc:
+            _CONSOLE.print(f"[red]error:[/red] cannot write job summary {summary_out}: {exc}")
+            return ci_mod.EXIT_USAGE
 
     # Surface the summary path via GITHUB_OUTPUT so the composite action can
     # read it back into the sticky-comment step.
     gh_output = os.environ.get("GITHUB_OUTPUT")
     if gh_output:
         hit, miss, degraded = ci_mod.count_outcomes(all_results)
-        with open(gh_output, "a", encoding="utf-8") as fh:
-            fh.write(
-                f"hit={hit}\nmiss={miss}\ndegraded={degraded}\nfailed={'true' if failed else 'false'}\n"
-            )
+        try:
+            with open(gh_output, "a", encoding="utf-8") as fh:
+                fh.write(
+                    f"hit={hit}\nmiss={miss}\ndegraded={degraded}\nfailed={'true' if failed else 'false'}\n"
+                )
+        except OSError as exc:
+            _CONSOLE.print(f"[red]error:[/red] cannot write GITHUB_OUTPUT {gh_output}: {exc}")
+            return ci_mod.EXIT_USAGE
 
     return ci_mod.EXIT_THRESHOLD if failed else ci_mod.EXIT_PASS
 

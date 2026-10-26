@@ -4,6 +4,64 @@ All notable changes to CiteGuard will be documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); semver per
 [SemVer 2.0](https://semver.org/).
 
+## [0.10.0] — 2026-10-27
+
+Correctness + release-hygiene release.  Three fixes from the autonomous grill's
+deep read of the shipped v0.9.0 source, each empirically reproduced against the
+shipped tree, plus a widened pre-flight gate.  Two of the three sit directly on
+CiteGuard's promise that a verification record is trustworthy — an I/O error
+must fail closed rather than be indistinguishable from a threshold failure, and
+a citation that is present in the document must not be silently dropped.  No new
+audience / distribution channel / out-of-scope expansion.
+
+### Fixed
+- **Report and summary I/O errors now exit 2 with a clean message instead of
+  raising a traceback** (`fix-io-errors-exit-2`).  The documented exit-code
+  contract is 0 pass / 1 threshold / 2 usage-or-IO error, and only the input
+  side honoured it (`_run_ci` already caught `OSError` around the
+  `--changed-only` read).  Every output side was unguarded, so an ordinary path
+  mistake produced an unhandled traceback and exit 1:
+  `citeguard --json /nonexistent/out.json paper.md` raised `FileNotFoundError`
+  out of `cli.py:309` into `report.write_json`; the `--md` sidecar did the same
+  at `cli.py:313`; CI mode raised at `cli.py:374` (`--summary-out`) and
+  `cli.py:382` (`GITHUB_OUTPUT`); and a changed-file entry that exists but is a
+  directory raised `IsADirectoryError` at `cli.py:348`.  Exit 1 is
+  indistinguishable from a threshold failure to the composite Action, and
+  because `failed` was never written to `GITHUB_OUTPUT` the Enforce step fell
+  through both of its guards and reported a green check — the silent-green class
+  v0.8.0 already repaired once.  All five sites now print the same `error:` line
+  the other usage errors use and return `EXIT_USAGE`.
+- **Lowercase and mixed-case CVE references are extracted**
+  (`fix-cve-case-insensitive`).  `_CVE_RE` was the only identifier matcher in
+  `extract.py` compiled without `re.IGNORECASE`, while its own citation builder
+  already called `.upper()` — dead normalisation, because a case-sensitive
+  `CVE-` prefix can never produce a non-uppercase match.  A bug report or
+  advisory that writes `cve-2024-3094` or `Cve-2024-3094` produced zero
+  citations: silently absent from stdout and from the JSON sidecar, never
+  queried, never reported.  The matcher is now case-insensitive and those
+  references collapse onto the canonical uppercase identifier.
+- **Registry-supplied text is escaped in the Markdown report and job summary**
+  (`fix-markdown-cell-escaping`).  v0.9.0 stopped rich markup in registry text
+  from restyling the terminal table, but `to_markdown` (`report.py`) and
+  `render_job_summary` (`ci.py`) still interpolated nearest-match titles,
+  degraded notes and evidence URLs straight into `|`-delimited rows: a `|` in a
+  title opened an extra column and a newline in a note ended the row and injected
+  a bare line into the table.  The job summary is written to
+  `$GITHUB_STEP_SUMMARY` and copied verbatim into the sticky PR comment.  Both
+  Markdown tables now share one escaping rule owned by the report layer.
+
+### Changed
+- **Version surfaces move in lockstep, and the pre-flight gate now watches
+  them** (`quality-version-lockstep-0-10-0`).  `scripts/check_version.py` gated
+  `pyproject.toml`, `CHANGELOG.md`, `__init__.py` and `action.yml` but never read
+  the README version badge or `web/site.json` `meta.content_version` — the two
+  surfaces every prior release bumped by hand, and the two
+  `docs/write_content.py` regenerates from hardcoded literals.  Editing only
+  `README.md` left the gate green while the surfaces disagreed.  The gate now
+  also asserts the README badge (both languages), the `write_content.py`
+  generator literals and `site.json` `meta.content_version`, with a regression
+  test over the real repository.
+
 ## [0.9.0] — 2026-09-21
 
 Correctness release.  Three fixes from the autonomous grill's deep read of
